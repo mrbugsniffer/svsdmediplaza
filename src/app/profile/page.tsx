@@ -6,8 +6,9 @@ import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { UserCircle, Mail, KeyRound } from 'lucide-react';
+import { UserCircle, Mail, KeyRound, MailCheck, CalendarPlus, CalendarClock, ShieldAlert } from 'lucide-react';
 import Link from 'next/link';
+import { format } from 'date-fns';
 
 export default function ProfilePage() {
   const { user, loading } = useAuth();
@@ -45,42 +46,47 @@ export default function ProfilePage() {
     );
   }
 
+  const ProfileDetailItem = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: React.ReactNode }) => (
+    <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-md">
+      <Icon size={20} className="text-muted-foreground mt-1 shrink-0" />
+      <div>
+        <p className="text-sm text-muted-foreground">{label}</p>
+        <p className="font-medium text-foreground">{value}</p>
+      </div>
+    </div>
+  );
+  
+  const creationTime = user.metadata.creationTime ? format(new Date(user.metadata.creationTime), "PPPp") : 'Not available';
+  const lastSignInTime = user.metadata.lastSignInTime ? format(new Date(user.metadata.lastSignInTime), "PPPp") : 'Not available';
+
   return (
     <div className="max-w-2xl mx-auto py-12">
       <Card className="shadow-xl">
-        <CardHeader className="text-center">
+        <CardHeader className="text-center pb-4">
           <UserCircle size={64} className="mx-auto text-primary mb-4" />
           <CardTitle className="text-3xl font-bold">Your Profile</CardTitle>
           <CardDescription>Manage your account details and preferences.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-3">
-            <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-md">
-              <Mail size={20} className="text-muted-foreground" />
-              <div>
-                <p className="text-sm text-muted-foreground">Email Address</p>
-                <p className="font-medium text-foreground">{user.email || 'Not available'}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-md">
-              <KeyRound size={20} className="text-muted-foreground" />
-              <div>
-                <p className="text-sm text-muted-foreground">User ID</p>
-                <p className="font-medium text-foreground text-xs">{user.uid}</p>
-              </div>
-            </div>
-             {user.displayName && (
-                <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-md">
-                    <UserCircle size={20} className="text-muted-foreground" />
-                    <div>
-                        <p className="text-sm text-muted-foreground">Display Name</p>
-                        <p className="font-medium text-foreground">{user.displayName}</p>
-                    </div>
-                </div>
+            {user.displayName && (
+                 <ProfileDetailItem icon={UserCircle} label="Display Name" value={user.displayName} />
             )}
+            <ProfileDetailItem icon={Mail} label="Email Address" value={user.email || 'Not available'} />
+            <ProfileDetailItem 
+              icon={user.emailVerified ? MailCheck : ShieldAlert} 
+              label="Email Verified" 
+              value={
+                <span className={user.emailVerified ? 'text-green-600' : 'text-amber-600'}>
+                  {user.emailVerified ? 'Yes' : 'No'}
+                </span>
+              } 
+            />
+            <ProfileDetailItem icon={KeyRound} label="User ID" value={<span className="text-xs">{user.uid}</span>} />
+            <ProfileDetailItem icon={CalendarPlus} label="Account Created" value={creationTime} />
+            <ProfileDetailItem icon={CalendarClock} label="Last Sign-in" value={lastSignInTime} />
           </div>
           
-          {/* Placeholder for future profile actions */}
           <div className="pt-4 border-t">
             <h3 className="text-lg font-semibold text-foreground mb-3">Account Actions</h3>
             <div className="flex flex-col sm:flex-row gap-3">
