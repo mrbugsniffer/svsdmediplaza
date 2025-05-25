@@ -6,11 +6,11 @@ import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { UserCircle, Mail, KeyRound, MailCheck, CalendarPlus, CalendarClock, ShieldAlert, MailQuestion } from 'lucide-react';
+import { UserCircle, Mail, KeyRound, MailCheck, CalendarPlus, CalendarClock, ShieldAlert, MailQuestion, Edit3 } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { auth } from '@/lib/firebase'; // Import auth directly
-import { sendPasswordResetEmail } from 'firebase/auth';
+import { sendPasswordResetEmail, updateProfile } from 'firebase/auth';
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -23,18 +23,36 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export default function ProfilePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [isSendingResetEmail, setIsSendingResetEmail] = useState(false);
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [displayName, setDisplayName] = useState(user?.displayName || '');
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
       router.push('/login?redirect=/profile'); // Redirect to login if not authenticated
     }
-  }, [user, loading, router]);
+    if (user && user.displayName !== displayName) {
+      setDisplayName(user.displayName || '');
+    }
+  }, [user, loading, router, displayName]);
 
   const handleSendPasswordReset = async () => {
     if (!user || !user.email) {
@@ -61,6 +79,35 @@ export default function ProfilePage() {
       });
     } finally {
       setIsSendingResetEmail(false);
+    }
+  };
+
+  const handleUpdateProfile = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!user) {
+      toast({ title: "Error", description: "You must be logged in to update your profile.", variant: "destructive" });
+      return;
+    }
+    if (displayName.trim() === "") {
+        toast({ title: "Validation Error", description: "Display name cannot be empty.", variant: "destructive" });
+        return;
+    }
+
+    setIsUpdatingProfile(true);
+    try {
+      await updateProfile(user, { displayName: displayName.trim() });
+      toast({ title: "Profile Updated", description: "Your display name has been successfully updated." });
+      setIsEditProfileOpen(false); // Close dialog on success
+      // The AuthContext's onAuthStateChanged listener should pick up the user object change
+    } catch (error: any) {
+      console.error("Profile update error:", error);
+      toast({
+        title: "Profile Update Failed",
+        description: error.message || "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdatingProfile(false);
     }
   };
 
@@ -108,7 +155,7 @@ export default function ProfilePage() {
       <Card className="shadow-xl">
         <CardHeader className="text-center pb-4">
           <UserCircle size={64} className="mx-auto text-primary mb-4" />
-          <CardTitle className="text-3xl font-bold">Your Profile</CardTitle>
+          <CardTitle className="text-3xl font-bold">{user.displayName || 'Your Profile'}</CardTitle>
           <CardDescription>Manage your account details and preferences.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -137,7 +184,41 @@ export default function ProfilePage() {
           <div className="pt-4 border-t">
             <h3 className="text-lg font-semibold text-foreground mb-3">Account Actions</h3>
             <div className="flex flex-col sm:flex-row gap-3">
-                <Button variant="outline" disabled>Edit Profile (Coming Soon)</Button>
+                <Dialog open={isEditProfileOpen} onOpenChange={setIsEditProfileOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline"><Edit3 size={16} className="mr-2" /> Edit Profile</Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>Edit Profile</DialogTitle>
+                      <DialogDescription>
+                        Make changes to your display name here. Click save when you&apos;re done.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleUpdateProfile} className="grid gap-4 py-4">
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="displayName" className="text-right">
+                          Display Name
+                        </Label>
+                        <Input
+                          id="displayName"
+                          value={displayName}
+                          onChange={(e) => setDisplayName(e.target.value)}
+                          className="col-span-3"
+                          disabled={isUpdatingProfile}
+                        />
+                      </div>
+                      <DialogFooter>
+                        <DialogClose asChild>
+                            <Button type="button" variant="outline" disabled={isUpdatingProfile}>Cancel</Button>
+                        </DialogClose>
+                        <Button type="submit" disabled={isUpdatingProfile} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                          {isUpdatingProfile ? 'Saving...' : 'Save Changes'}
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
                 
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
@@ -165,7 +246,7 @@ export default function ProfilePage() {
             </div>
             {!user.emailVerified && (
               <p className="text-xs text-muted-foreground mt-3">
-                To change your password or manage other sensitive account settings, your email address must be verified first.
+                To manage sensitive account settings like changing your password or verifying your email, please ensure your email is verified first.
               </p>
             )}
           </div>
