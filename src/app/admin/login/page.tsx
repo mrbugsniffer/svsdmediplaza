@@ -32,7 +32,7 @@ export default function AdminLoginPage() {
 
     // --- IMPORTANT: This is NOT secure authentication ---
     // --- For demonstration purposes only. Use a real auth system for production. ---
-    if (email === 'admin@example.com' && password === 'password') {
+    if (email === 'admin@gmail.com' && password === 'password') {
       localStorage.setItem(ADMIN_AUTH_KEY, 'true');
       toast({
         title: "Admin Login Successful",
@@ -42,7 +42,7 @@ export default function AdminLoginPage() {
     } else {
       toast({
         title: "Admin Login Failed",
-        description: "Invalid credentials. This is a demo, try 'admin@example.com' and 'password'.",
+        description: "Invalid credentials. This is a demo, try 'admin@gmail.com' and 'password'.",
         variant: "destructive",
       });
     }
@@ -65,7 +65,7 @@ export default function AdminLoginPage() {
               <Input 
                 id="email" 
                 type="email" 
-                placeholder="admin@example.com" 
+                placeholder="admin@gmail.com" 
                 required 
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
