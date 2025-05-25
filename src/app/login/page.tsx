@@ -9,22 +9,54 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { LogIn } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from '@/context/auth-context';
+import { auth } from '@/lib/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import React, { useState } from 'react';
 
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useAuth(); // Get user from context to redirect if already logged in
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  React.useEffect(() => {
+    if (user) {
+      router.push('/'); // Redirect to homepage if user is already logged in
+    }
+  }, [user, router]);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // Basic form submission simulation
-    // In a real app, you would handle authentication here
-    toast({
-      title: "Login Submitted",
-      description: "Login functionality is not yet implemented.",
-    });
-    // For now, let's simulate a redirect or provide feedback
-    // router.push('/'); 
+    setIsLoading(true);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      toast({
+        title: "Login Successful",
+        description: "Welcome back!",
+      });
+      router.push('/'); // Redirect to homepage or dashboard
+    } catch (error: any) {
+      console.error("Login error:", error);
+      toast({
+        title: "Login Failed",
+        description: error.message || "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  if (user) { // Prevent rendering form if user is already logged in and redirecting
+    return (
+      <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
+        <p>Redirecting...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex justify-center items-center min-h-[calc(100vh-200px)] py-12">
@@ -38,14 +70,30 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
-              <Input id="email" type="email" placeholder="you@example.com" required />
+              <Input 
+                id="email" 
+                type="email" 
+                placeholder="you@example.com" 
+                required 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={isLoading}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" placeholder="••••••••" required />
+              <Input 
+                id="password" 
+                type="password" 
+                placeholder="••••••••" 
+                required 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
+              />
             </div>
-            <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
-              Login
+            <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isLoading}>
+              {isLoading ? 'Logging in...' : 'Login'}
             </Button>
           </form>
         </CardContent>

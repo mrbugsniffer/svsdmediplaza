@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
@@ -5,6 +6,7 @@ import { Navbar } from '@/components/layout/navbar';
 import { SecondaryNavbar } from '@/components/layout/secondary-navbar';
 import { Footer } from '@/components/layout/footer';
 import { CartProvider } from '@/context/cart-context';
+import { AuthProvider } from '@/context/auth-context'; // Import AuthProvider
 import { Toaster } from "@/components/ui/toaster";
 
 const geistSans = Geist({
@@ -30,15 +32,17 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}>
-        <CartProvider>
-          <Navbar />
-          <SecondaryNavbar />
-          <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            {children}
-          </main>
-          <Footer />
-          <Toaster />
-        </CartProvider>
+        <AuthProvider> {/* Wrap CartProvider and the rest with AuthProvider */}
+          <CartProvider>
+            <Navbar />
+            <SecondaryNavbar />
+            <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              {children}
+            </main>
+            <Footer />
+            <Toaster />
+          </CartProvider>
+        </AuthProvider>
       </body>
     </html>
   );
