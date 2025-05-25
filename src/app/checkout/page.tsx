@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { CreditCard, ShoppingBag, AlertTriangle } from 'lucide-react';
+import { ShoppingBag, AlertTriangle } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -31,15 +31,6 @@ const shippingSchema = z.object({
 });
 
 type ShippingFormData = z.infer<typeof shippingSchema>;
-
-// Mock payment schema (very basic for UI)
-const paymentSchema = z.object({
-    cardNumber: z.string().min(16, "Card number must be 16 digits").max(16, "Card number must be 16 digits").regex(/^\d{16}$/, "Invalid card number"),
-    expiryDate: z.string().regex(/^(0[1-9]|1[0-2])\/\d{2}$/, "Invalid expiry date (MM/YY)"),
-    cvv: z.string().min(3, "CVV must be 3 digits").max(4, "CVV can be 3 or 4 digits").regex(/^\d{3,4}$/, "Invalid CVV"),
-});
-
-type PaymentFormData = z.infer<typeof paymentSchema>;
 
 
 export default function CheckoutPage() {
@@ -66,11 +57,6 @@ export default function CheckoutPage() {
     }
   });
 
-  const paymentForm = useForm<PaymentFormData>({
-      resolver: zodResolver(paymentSchema),
-      defaultValues: { cardNumber: '', expiryDate: '', cvv: ''}
-  });
-
   useEffect(() => {
     if (user?.email && !shippingForm.getValues('email')) {
         shippingForm.setValue('email', user.email);
@@ -88,13 +74,8 @@ export default function CheckoutPage() {
 
   const handlePlaceOrder = async (shippingData: ShippingFormData) => {
     setIsProcessingOrder(true);
-    // Simulate payment processing
-    await paymentForm.trigger(); // Validate payment form
-    if (!paymentForm.formState.isValid) {
-        toast({ title: "Payment Error", description: "Please correct the errors in the payment details.", variant: "destructive" });
-        setIsProcessingOrder(false);
-        return;
-    }
+    
+    // No payment form validation needed anymore
 
     try {
       const orderData = {
@@ -102,7 +83,7 @@ export default function CheckoutPage() {
         customerEmail: shippingData.email,
         items: cartItems,
         totalAmount: finalTotal,
-        orderDate: serverTimestamp(), // This will be set by Firestore server
+        orderDate: serverTimestamp(), 
         createdAt: serverTimestamp(),
         status: 'Pending' as const,
         shippingAddress: {
@@ -211,51 +192,7 @@ export default function CheckoutPage() {
             </CardContent>
           </Card>
 
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-2xl flex items-center gap-2">
-                <CreditCard /> Payment Details
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-                <div className="p-4 bg-primary/10 border-l-4 border-primary text-primary rounded-md mb-6">
-                    <div className="flex items-start">
-                        <AlertTriangle className="h-5 w-5 mr-3 mt-1 shrink-0" />
-                        <div>
-                            <p className="font-semibold">This is a mock payment form.</p>
-                            <p className="text-sm">Do not enter real credit card details. This form is for demonstration purposes only. No actual payment will be processed.</p>
-                        </div>
-                    </div>
-                </div>
-              <Form {...paymentForm}>
-                <form className="space-y-4"> {/* No onSubmit here, validation triggered by main form */}
-                    <FormField control={paymentForm.control} name="cardNumber" render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Card Number</FormLabel>
-                        <FormControl><Input placeholder="0000 0000 0000 0000" {...field} /></FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )} />
-                    <div className="grid sm:grid-cols-2 gap-4">
-                        <FormField control={paymentForm.control} name="expiryDate" render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Expiry Date (MM/YY)</FormLabel>
-                            <FormControl><Input placeholder="MM/YY" {...field} /></FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )} />
-                        <FormField control={paymentForm.control} name="cvv" render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>CVV</FormLabel>
-                            <FormControl><Input placeholder="123" {...field} /></FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )} />
-                    </div>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
+          {/* Payment Details Card Removed */}
         </div>
 
         <div className="lg:col-span-1">
@@ -301,7 +238,7 @@ export default function CheckoutPage() {
             </CardContent>
             <CardFooter>
               <Button type="submit" form="checkout-form" size="lg" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
-                disabled={isProcessingOrder || shippingForm.formState.isSubmitting || paymentForm.formState.isSubmitting}>
+                disabled={isProcessingOrder || shippingForm.formState.isSubmitting}>
                 {isProcessingOrder ? 'Processing Order...' : 'Place Order'}
               </Button>
             </CardFooter>
