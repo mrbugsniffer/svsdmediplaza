@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react'; // Import 'use'
 import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,9 +33,11 @@ interface ProductFormData {
 
 export default function EditProductPage() {
   const router = useRouter();
-  const params = useParams();
+  const paramsPromise = useParams(); // useParams might return a promise-like object
+  const resolvedParams = use(paramsPromise as any) as { id: string }; // Unwrap with React.use()
+
   const { toast } = useToast();
-  const productId = params.id as string;
+  const productId = resolvedParams.id;
 
   const [formData, setFormData] = useState<ProductFormData | null>(null);
   const [originalProductName, setOriginalProductName] = useState('');
@@ -76,6 +78,11 @@ export default function EditProductPage() {
         }
       };
       fetchProduct();
+    } else {
+        // Handle case where productId might still be undefined after use(paramsPromise) if params are empty
+        toast({ title: "Error", description: "Product ID is missing.", variant: "destructive" });
+        router.push('/admin/products');
+        setIsLoading(false);
     }
   }, [productId, router, toast]);
 
@@ -95,7 +102,7 @@ export default function EditProductPage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!formData) return;
+    if (!formData || !productId) return; // Ensure productId is available
     setIsSubmitting(true);
 
     if (!formData.name || !formData.price || !formData.category || !formData.brand || !formData.stock) {
@@ -207,7 +214,7 @@ export default function EditProductPage() {
             </div>
              <div className="space-y-2">
               <Label htmlFor="rating">Rating (Optional, 1-5)</Label>
-              <Input id="rating" name="rating" type="number" step="0.1" min="1" max="5" value={formData.rating} onChange={handleChange} disabled={isSubmitting} />
+              <Input id="rating" name="rating" type="number" step="0.1" min="1" max="5" value={formData.rating || ''} onChange={handleChange} disabled={isSubmitting} />
             </div>
             <div className="flex items-center space-x-2">
                 <Checkbox id="featured" name="featured" checked={formData.featured} onCheckedChange={(checked) => setFormData(prev => prev ? { ...prev, featured: Boolean(checked) } : null)} disabled={isSubmitting} />

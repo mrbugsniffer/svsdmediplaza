@@ -1,11 +1,12 @@
-// Using 'use client' for potential future client-side enhancements, though current version could be server component
+
+// Using 'use client' for potential future client-side enhancements
 'use client'; 
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle, Package } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, use } from "react"; // Import 'use'
 
 
 // Mock function to simulate fetching order details
@@ -28,18 +29,26 @@ async function getOrderDetails(orderId: string) {
 }
 
 
-export default function OrderConfirmationPage({ params }: { params: { orderId: string } }) {
+export default function OrderConfirmationPage({ params: paramsAsPromise }: { params: { orderId: string } }) {
+  const resolvedParams = use(paramsAsPromise as any) as { orderId: string }; // Unwrap with React.use()
+  const { orderId } = resolvedParams;
+
   const [orderDetails, setOrderDetails] = useState<{id: string; email: string; estimatedDelivery: string} | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (params.orderId) {
-      getOrderDetails(params.orderId).then(details => {
+    if (orderId) {
+      getOrderDetails(orderId).then(details => {
         setOrderDetails(details);
         setLoading(false);
       });
+    } else {
+        // Handle case where orderId might still be undefined after use(paramsAsPromise)
+        setLoading(false);
+        // Optionally, you could show an error or redirect here
+        console.error("Order ID is missing.");
     }
-  }, [params.orderId]);
+  }, [orderId]);
 
   if (loading) {
     return (
@@ -58,7 +67,7 @@ export default function OrderConfirmationPage({ params }: { params: { orderId: s
          <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center">
             <Package size={64} className="text-destructive mb-6" />
             <h1 className="text-3xl font-bold text-foreground mb-4">Order Not Found</h1>
-            <p className="text-muted-foreground mb-8">We couldn't find details for order ID: {params.orderId}.</p>
+            <p className="text-muted-foreground mb-8">We couldn't find details for order ID: {orderId}.</p>
             <Button asChild>
                 <Link href="/products">Continue Shopping</Link>
             </Button>
