@@ -14,11 +14,12 @@ export function HeroSection() {
           {/* Left Illustration */}
           <div className="hidden md:block">
             <Image 
-              src="https://images.unsplash.com/photo-1579762714453-51d9913984e2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxkb2N0b3IlMjBpbGx1c3RyYXRpb258ZW58MHx8fHwxNzQ4MTYxNTg0fDA&ixlib=rb-4.1.0&q=80&w=1080" 
+              src="https://placehold.co/250x200.png" 
               alt="Healthcare professionals" 
               width={250} 
               height={200} 
               className="opacity-80 object-cover rounded"
+              data-ai-hint="doctor illustration"
             />
           </div>
 
@@ -40,21 +41,22 @@ export function HeroSection() {
           {/* Right Illustration */}
           <div className="hidden md:block">
             <Image 
-              src="https://images.unsplash.com/photo-1582201957428-5ff47ff7605c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxwYXRpZW50JTIwaWxsdXN0cmF0aW9ufGVufDB8fHx8MTc0ODE2MTU4NHww&ixlib=rb-4.1.0&q=80&w=1080" 
+              src="https://placehold.co/250x200.png" 
               alt="Medical supplies" 
               width={250} 
               height={200} 
               className="opacity-80 object-cover rounded"
+              data-ai-hint="patient illustration"
             />
           </div>
         </div>
       </div>
       {/* Decorative elements */}
       <div className="absolute top-5 left-10 opacity-20 hidden md:block">
-        <Image src="https://images.unsplash.com/photo-1603982222981-20f4389264b7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxtZWRpY2luZSUyMHBpbGx8ZW58MHx8fHwxNzQ4MTYxNTg0fDA&ixlib=rb-4.1.0&q=80&w=1080" alt="Pill icon" width={60} height={60} className="object-cover rounded"/>
+        <Image src="https://placehold.co/60x60.png" alt="Pill icon" width={60} height={60} className="object-cover rounded" data-ai-hint="medicine pill"/>
       </div>
       <div className="absolute bottom-5 right-10 opacity-20 hidden md:block">
-         <Image src="https://images.unsplash.com/photo-1561976167-fa9e36b104ef?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxtZWRpY2FsJTIwY3Jvc3N8ZW58MHx8fHwxNzQ4MTYxNTg0fDA&ixlib=rb-4.1.0&q=80&w=1080" alt="Medical cross icon" width={50} height={50} className="object-cover rounded"/>
+         <Image src="https://placehold.co/50x50.png" alt="Medical cross icon" width={50} height={50} className="object-cover rounded" data-ai-hint="medical cross"/>
       </div>
     </section>
   );
