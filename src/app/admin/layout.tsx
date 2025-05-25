@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { SidebarProvider, Sidebar, SidebarTrigger, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter } from '@/components/ui/sidebar';
 import { LayoutDashboard, Package, LogOut, Settings, Users, ShoppingCart, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Toaster } from "@/components/ui/toaster"; // Import Toaster
+import { Toaster } from "@/components/ui/toaster"; 
 import { Geist, Geist_Mono } from 'next/font/google';
 
 const geistSans = Geist({
@@ -124,13 +124,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             </Sidebar>
             
             <div className="flex-1 flex flex-col">
-                <header className="sticky top-0 z-40 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 sm:py-4">
-                    <SidebarTrigger className="sm:hidden" /> 
-                    {/* Add breadcrumbs or page title here */}
-                    <h1 className="text-xl font-semibold">
-                        {menuItems.find(item => pathname.startsWith(item.href))?.label || 'Admin'}
-                    </h1>
-                </header>
+                {/* The admin-specific header has been removed.
+                    The SidebarTrigger for mobile will still be rendered if the sidebar is collapsible.
+                    If you want to remove the trigger too, or have a minimal header, adjust below.
+                */}
+                <div className="flex h-14 items-center px-4 sm:px-6 border-b bg-background md:hidden"> {/* Minimal bar for mobile trigger */}
+                    <SidebarTrigger/> 
+                </div>
                 <main className="flex-1 p-4 sm:p-6 bg-muted overflow-auto">
                  {children}
                 </main>
