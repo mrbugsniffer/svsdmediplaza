@@ -88,7 +88,7 @@ export default function AdminLoginPage() {
         <CardHeader className="text-center">
           <ShieldCheck size={48} className="mx-auto text-primary mb-4" />
           <CardTitle className="text-3xl font-bold">Admin Portal</CardTitle>
-          <CardDescription>Login to manage svsdmediplaza. <br/>Use your designated admin credentials.</CardDescription>
+          <CardDescription>Login to manage SVSD mediplaza. <br/>Use your designated admin credentials.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">

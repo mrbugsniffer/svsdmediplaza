@@ -162,8 +162,8 @@ export function Navbar() {
           <div className="flex items-center gap-2 sm:gap-4">
             <Link href="/" className="flex items-center gap-2 text-xl font-bold text-primary">
               <SvsdMediPlazaLogo />
-              <span className="hidden sm:inline">svsd</span><span className="font-normal hidden sm:inline">mediplaza</span>
-              <span className="sm:hidden text-base">svsdmediplaza</span>
+              <span className="hidden sm:inline">SVSD</span><span className="font-normal hidden sm:inline"> mediplaza</span>
+              <span className="sm:hidden text-base">SVSD mediplaza</span>
             </Link>
             <Button variant="ghost" className="hidden sm:flex items-center gap-1 text-xs px-2 text-foreground hover:text-primary">
               <MapPin size={16} />

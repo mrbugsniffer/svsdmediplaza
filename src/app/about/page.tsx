@@ -9,7 +9,7 @@ export default function AboutUsPage() {
     <div className="space-y-12">
       <section className="text-center py-12 bg-gradient-to-r from-primary/10 via-accent/10 to-secondary/10 rounded-xl shadow-lg">
         <div className="container mx-auto">
-          <h1 className="text-4xl md:text-5xl font-bold text-primary mb-4">About svsdmediplaza</h1>
+          <h1 className="text-4xl md:text-5xl font-bold text-primary mb-4">About SVSD mediplaza</h1>
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
             Your trusted partner in health and wellness, committed to providing accessible and affordable healthcare solutions.
           </p>
@@ -40,7 +40,7 @@ export default function AboutUsPage() {
           </CardHeader>
           <CardContent className="text-muted-foreground space-y-3">
             <p>
-              Founded with the vision to revolutionize how healthcare is accessed, svsdmediplaza started as a small initiative to help local communities get their medications more easily. Over the years, we've grown into a leading online pharmacy, driven by our passion for health and our commitment to our customers.
+              Founded with the vision to revolutionize how healthcare is accessed, SVSD mediplaza started as a small initiative to help local communities get their medications more easily. Over the years, we've grown into a leading online pharmacy, driven by our passion for health and our commitment to our customers.
             </p>
             <p>
               Our journey has been one of constant innovation, learning, and adaptation to meet the evolving needs of those we serve.

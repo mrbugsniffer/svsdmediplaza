@@ -90,7 +90,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             <SidebarHeader className="p-4 border-b">
                 <Link href="/admin/dashboard" className="flex items-center gap-2 text-lg font-semibold text-primary">
                   <SvsdMediPlazaAdminLogo />
-                  <span className="group-data-[collapsible=icon]:hidden">svsd Admin</span>
+                  <span className="group-data-[collapsible=icon]:hidden">SVSD Admin</span>
               </Link>
             </SidebarHeader>
             <SidebarContent>

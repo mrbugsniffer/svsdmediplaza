@@ -76,7 +76,7 @@ export default function SignupPage() {
         <CardHeader className="text-center">
           <UserPlus size={48} className="mx-auto text-primary mb-4" />
           <CardTitle className="text-3xl font-bold">Create Your Account</CardTitle>
-          <CardDescription>Join svsdmediplaza to manage your health needs easily.</CardDescription>
+          <CardDescription>Join SVSD mediplaza to manage your health needs easily.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">

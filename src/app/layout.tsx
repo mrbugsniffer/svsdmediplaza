@@ -26,7 +26,7 @@ const geistMono = Geist_Mono({
 
 // For client root layouts, metadata is typically managed via <Head> or in specific page.tsx files.
 // We can set a default title here.
-const DEFAULT_TITLE = 'svsdmediplaza - Your Health Partner';
+const DEFAULT_TITLE = 'SVSD mediplaza - Your Health Partner';
 const DEFAULT_DESCRIPTION = 'Online pharmacy for all your healthcare needs. Buy medicines, book lab tests, and consult doctors online.';
 
 
