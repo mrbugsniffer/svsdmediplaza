@@ -8,55 +8,24 @@ import { Search } from 'lucide-react';
 
 export function HeroSection() {
   return (
-    <section className="relative py-10 md:py-16 rounded-xl shadow-lg overflow-hidden" style={{ backgroundColor: '#0A4948' }}>
+    <section className="relative py-12 md:py-20 rounded-xl shadow-lg overflow-hidden" style={{ backgroundColor: '#0A4948' }}>
       <div className="container mx-auto px-4 relative z-10">
-        <div className="flex flex-col md:flex-row items-center justify-between">
-          {/* Left Illustration */}
-          <div className="hidden md:block">
-            <Image 
-              src="https://img.freepik.com/premium-vector/cartoon-doctor-patient-discussing-proper-medication-usage-with-speech-bubbles-showing-key_216520-75982.jpg" 
-              alt="Healthcare professionals discussing medication" 
-              width={250} 
-              height={250} 
-              className="opacity-80 object-cover rounded"
-              data-ai-hint="doctor patient"
-            />
-          </div>
-
+        <div className="flex flex-col items-center justify-center">
           {/* Center Content */}
-          <div className="text-center md:w-1/2">
-            <h1 className="text-3xl md:text-4xl font-bold text-white mb-6">
+          <div className="text-center md:w-3/4 lg:w-1/2">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-6 md:mb-8">
               Buy Medicines and Essentials
             </h1>
-            <div className="relative max-w-lg mx-auto">
+            <div className="relative max-w-xl mx-auto">
               <Input
                 type="search"
-                placeholder="Search Medicines"
-                className="w-full h-12 md:h-14 pl-12 pr-4 text-base rounded-md border-none bg-white text-foreground placeholder-muted-foreground"
+                placeholder="Search Medicines, Health Products, and More"
+                className="w-full h-12 md:h-14 pl-12 pr-4 text-base rounded-md border-none bg-white text-foreground placeholder-muted-foreground shadow-md focus-visible:ring-2 focus-visible:ring-primary"
               />
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             </div>
           </div>
-
-          {/* Right Illustration */}
-          <div className="hidden md:block">
-            <Image 
-              src="https://placehold.co/250x200.png" 
-              alt="Medical supplies" 
-              width={250} 
-              height={200} 
-              className="opacity-80 object-cover rounded"
-              data-ai-hint="patient illustration"
-            />
-          </div>
         </div>
-      </div>
-      {/* Decorative elements */}
-      <div className="absolute top-5 left-10 opacity-20 hidden md:block">
-        <Image src="https://placehold.co/60x60.png" alt="Pill icon" width={60} height={60} className="object-cover rounded" data-ai-hint="medicine pill"/>
-      </div>
-      <div className="absolute bottom-5 right-10 opacity-20 hidden md:block">
-         <Image src="https://placehold.co/50x50.png" alt="Medical cross icon" width={50} height={50} className="object-cover rounded" data-ai-hint="medical cross"/>
       </div>
     </section>
   );
