@@ -90,11 +90,11 @@ export default function AddProductPage() {
         description: `${formData.name} has been successfully added to Firestore.`,
       });
       router.push('/admin/products');
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error adding product to Firestore:", error);
       toast({
         title: "Error Adding Product",
-        description: "An unexpected error occurred. Please try again.",
+        description: error.message || "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {
