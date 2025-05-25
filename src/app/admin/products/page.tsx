@@ -22,7 +22,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
+  // AlertDialogTrigger, // No longer needed here if Button acts as trigger
 } from "@/components/ui/alert-dialog";
 
 export default function AdminProductsPage() {
@@ -161,17 +161,19 @@ export default function AdminProductsPage() {
                                     <span className="sr-only">Edit {product.name}</span>
                                 </Link>
                             </Button>
-                            <AlertDialogTrigger asChild>
-                                <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={() => confirmDeleteProduct(product)}
-                                className="text-destructive hover:text-destructive hover:border-destructive/50"
-                                >
-                                <Trash2 size={16} />
-                                <span className="sr-only">Delete {product.name}</span>
-                                </Button>
-                            </AlertDialogTrigger>
+                            {/* 
+                              The Button now directly triggers the dialog via confirmDeleteProduct 
+                              which updates the productToDelete state.
+                            */}
+                            <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => confirmDeleteProduct(product)}
+                            className="text-destructive hover:text-destructive hover:border-destructive/50"
+                            >
+                            <Trash2 size={16} />
+                            <span className="sr-only">Delete {product.name}</span>
+                            </Button>
                         </div>
                         </TableCell>
                     </TableRow>
