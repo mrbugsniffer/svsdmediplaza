@@ -9,17 +9,18 @@ import { SidebarProvider, Sidebar, SidebarTrigger, SidebarContent, SidebarHeader
 import { LayoutDashboard, Package, LogOut, Settings, Users, ShoppingCart, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Toaster } from "@/components/ui/toaster";
-import { Geist, Geist_Mono } from 'next/font/google';
+// Font imports are not needed here if RootLayout handles them
+// import { Geist, Geist_Mono } from 'next/font/google';
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-});
+// const geistSans = Geist({
+//   variable: '--font-geist-sans',
+//   subsets: ['latin'],
+// });
 
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
-});
+// const geistMono = Geist_Mono({
+//   variable: '--font-geist-mono',
+//   subsets: ['latin'],
+// });
 
 
 const ADMIN_AUTH_KEY = 'svsdmediplaza_admin_auth';
@@ -40,10 +41,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
     setIsClient(true);
     const isAdminAuthenticated = localStorage.getItem(ADMIN_AUTH_KEY) === 'true';
-    if (!isAdminAuthenticated) {
+    if (!isAdminAuthenticated && pathname !== '/admin/login') { // also check if not already on login page
       router.replace('/admin/login');
     }
-  }, [router]);
+  }, [router, pathname]); // Added pathname to dependencies
 
   const handleLogout = () => {
     localStorage.removeItem(ADMIN_AUTH_KEY);
@@ -52,6 +53,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   if (!isClient || (localStorage.getItem(ADMIN_AUTH_KEY) !== 'true' && pathname !== '/admin/login')) {
     // Show loading or redirecting state, or null if redirecting immediately
+    // Ensure this loading state doesn't render html/body
     return (
         <div className="flex justify-center items-center min-h-screen bg-muted">
             <p>Loading admin area...</p>
@@ -59,15 +61,14 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     );
   }
 
-  // If on login page, don't render the layout
+  // If on login page, don't render the full admin sidebar layout
+  // The AdminLoginPage itself will provide its full-screen styling
   if (pathname === '/admin/login') {
     return (
-      <html lang="en" suppressHydrationWarning>
-        <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-muted`}>
-          {children}
-          <Toaster />
-        </body>
-      </html>
+      <>
+        {children}
+        <Toaster />
+      </>
     );
   }
 
@@ -80,65 +81,59 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     { href: '/admin/settings', label: 'Settings', icon: Settings },
   ];
 
-
+  // Main admin layout with sidebar
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-muted`}>
-        <SidebarProvider defaultOpen>
-          <div className="flex min-h-screen">
-            <Sidebar side="left" className="border-r bg-background text-foreground" collapsible="icon">
-              <SidebarHeader className="p-4 border-b">
-                 <Link href="/admin/dashboard" className="flex items-center gap-2 text-lg font-semibold text-primary">
-                    <SvsdMediPlazaAdminLogo />
-                    <span className="group-data-[collapsible=icon]:hidden">svsd Admin</span>
-                </Link>
-              </SidebarHeader>
-              <SidebarContent>
-                <SidebarMenu>
-                  {menuItems.map((item) => (
-                    <SidebarMenuItem key={item.label}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={pathname.startsWith(item.href)}
-                        tooltip={item.label}
-                      >
-                        <Link href={item.href}>
-                          <item.icon />
-                          <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
-                        </Link>
+    <>
+      <SidebarProvider defaultOpen>
+        <div className="flex min-h-screen"> {/* Apply bg-muted here or rely on main tag below */}
+          <Sidebar side="left" className="border-r bg-background text-foreground" collapsible="icon">
+            <SidebarHeader className="p-4 border-b">
+                <Link href="/admin/dashboard" className="flex items-center gap-2 text-lg font-semibold text-primary">
+                  <SvsdMediPlazaAdminLogo />
+                  <span className="group-data-[collapsible=icon]:hidden">svsd Admin</span>
+              </Link>
+            </SidebarHeader>
+            <SidebarContent>
+              <SidebarMenu>
+                {menuItems.map((item) => (
+                  <SidebarMenuItem key={item.label}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={pathname.startsWith(item.href)}
+                      tooltip={item.label}
+                    >
+                      <Link href={item.href}>
+                        <item.icon />
+                        <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarContent>
+            <SidebarFooter className="p-2 border-t">
+              <SidebarMenu>
+                  <SidebarMenuItem>
+                      <SidebarMenuButton onClick={handleLogout} tooltip="Logout">
+                          <LogOut />
+                          <span className="group-data-[collapsible=icon]:hidden">Logout</span>
                       </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarContent>
-              <SidebarFooter className="p-2 border-t">
-                <SidebarMenu>
-                    <SidebarMenuItem>
-                        <SidebarMenuButton onClick={handleLogout} tooltip="Logout">
-                            <LogOut />
-                            <span className="group-data-[collapsible=icon]:hidden">Logout</span>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                </SidebarMenu>
-              </SidebarFooter>
-            </Sidebar>
-            
-            <div className="flex-1 flex flex-col">
-                {/* The admin-specific header has been removed.
-                    The SidebarTrigger for mobile will still be rendered if the sidebar is collapsible.
-                    If you want to remove the trigger too, or have a minimal header, adjust below.
-                */}
-                <div className="flex h-14 items-center px-4 sm:px-6 border-b bg-background md:hidden"> {/* Minimal bar for mobile trigger */}
-                    <SidebarTrigger/> 
-                </div>
-                <main className="flex-1 p-4 sm:p-6 bg-muted overflow-auto">
-                 {children}
-                </main>
-            </div>
+                  </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarFooter>
+          </Sidebar>
+          
+          <div className="flex-1 flex flex-col">
+              <div className="flex h-14 items-center px-4 sm:px-6 border-b bg-background md:hidden">
+                  <SidebarTrigger/> 
+              </div>
+              <main className="flex-1 p-4 sm:p-6 bg-muted overflow-auto">
+                {children}
+              </main>
           </div>
-        </SidebarProvider>
-        <Toaster />
-      </body>
-    </html>
+        </div>
+      </SidebarProvider>
+      <Toaster />
+    </>
   );
 }
