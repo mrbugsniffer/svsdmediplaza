@@ -32,7 +32,7 @@ export default function LoginPage() {
         <CardHeader className="text-center">
           <LogIn size={48} className="mx-auto text-primary mb-4" />
           <CardTitle className="text-3xl font-bold">Welcome Back!</CardTitle>
-          <CardDescription>Sign in to access your PharmaFlow account.</CardDescription>
+          <CardDescription>Sign in to access your svsdmediplaza account.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">

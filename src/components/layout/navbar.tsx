@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { MapPin, ChevronDown, Percent, ShoppingCart, LogIn, UserPlus, Menu, Search } from 'lucide-react'; // Added LogIn, UserPlus
+import { MapPin, ChevronDown, Percent, ShoppingCart, LogIn, UserPlus, Menu, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useCart } from '@/hooks/use-cart';
@@ -10,21 +10,28 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import React from 'react';
 import { Input } from '@/components/ui/input';
 
-const ApolloLogo = () => (
+// Custom logo for svsdmediplaza - can be refined
+const SvsdMediPlazaLogo = () => (
   <svg width="30" height="30" viewBox="0 0 100 100" fill="hsl(var(--primary))" xmlns="http://www.w3.org/2000/svg">
-    <path d="M50 5C25.16 5 5 25.16 5 50s20.16 45 45 45 45-20.16 45-45S74.84 5 50 5zm0 82.73c-20.82 0-37.73-16.9-37.73-37.73S29.18 12.27 50 12.27s37.73 16.91 37.73 37.73S70.82 87.73 50 87.73z"/>
-    <path d="M50 27.27c-12.55 0-22.73 10.18-22.73 22.73S37.45 72.73 50 72.73s22.73-10.18 22.73-22.73S62.55 27.27 50 27.27zm0 37.73c-8.28 0-15-6.72-15-15s6.72-15 15-15 15 6.72 15 15-6.72 15-15 15z"/>
+    {/* Simple "S" shape for now, can be replaced with a more complex logo SVG */}
+    <path d="M68.3,20.3c-5.9-4.5-13.2-7.1-21-7.1c-12.5,0-23.8,6.3-30.4,15.9l-0.1,0.1C10.7,36.8,7,44.9,7,53.8
+	c0,9.1,3.9,17.3,10.2,23.1c6.6,6,15.3,9.5,24.8,9.5c7.8,0,15.1-2.6,21-7.1c6.1-4.7,10.4-11.3,12.4-18.9h-20
+	c-2.2,0-4-1.8-4-4s1.8-4,4-4h23.8c0.4-2.6,0.6-5.2,0.6-7.8c0-8.1-2.9-15.5-7.8-21.4C71.7,21.9,70,21,68.3,20.3z M54.8,68.4
+	c-3.6,2.8-8,4.4-12.8,4.4c-7.2,0-13.6-3.4-17.7-8.6c-4.4-5.2-6.7-11.6-6.7-18.4c0-6.6,2.2-12.8,6.4-17.9l0.1-0.1
+	c4.1-5.2,9.9-8.5,16.4-8.5c4.8,0,9.2,1.7,12.8,4.4c3.6,2.8,6.2,6.6,7.5,10.9H48.8c-2.2,0-4,1.8-4,4s1.8,4,4,4h17.1
+	C64.4,63.6,60.1,66.9,54.8,68.4z"/>
   </svg>
 );
+
 
 const mainNavLinks = [
   { href: '#', label: 'Buy Medicines' },
   { href: '#', label: 'Find Doctors' },
   { href: '#', label: 'Lab Tests' },
-  { href: '#', label: 'Circle Membership' },
+  { href: '#', label: 'Memberships' },
   { href: '/track-order', label: 'Health Records' },
-  { href: '#', label: 'Credit Card', new: true },
-  { href: '#', label: 'Buy Insurance', new: true },
+  { href: '#', label: 'Offers', new: true },
+  { href: '#', label: 'Wellness', new: true },
 ];
 
 export function Navbar() {
@@ -51,14 +58,14 @@ export function Navbar() {
           )}
         </Link>
       </Button>
-      <Button variant="ghost" asChild className="text-xs sm:text-sm px-2 sm:px-3 text-foreground hover:text-primary">
+      <Button variant="outline" asChild className="text-xs sm:text-sm px-2 sm:px-3 text-foreground hover:text-primary hover:border-primary">
         <Link href="/login">
           <LogIn size={isMobile ? 18 : 20} className="mr-1" /> Login
         </Link>
       </Button>
       <Button variant="default" asChild className="text-xs sm:text-sm px-2 sm:px-3 bg-accent hover:bg-accent/90 text-accent-foreground">
         <Link href="/signup">
-          <UserPlus size={isMobile ? 16 : 18} className="mr-1 sm:mr-1.5" /> {/* Adjusted icon size and margin for mobile */}
+          <UserPlus size={isMobile ? 16 : 18} className="mr-1 sm:mr-1.5" />
           Sign Up
         </Link>
       </Button>
@@ -83,9 +90,9 @@ export function Navbar() {
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-4">
             <Link href="/" className="flex items-center gap-2 text-xl font-bold text-primary">
-              <ApolloLogo />
-              <span className="hidden sm:inline">Apollo</span> <span className="font-normal hidden sm:inline">PHARMACY</span>
-              <span className="sm:hidden text-base">Apollo</span>
+              <SvsdMediPlazaLogo />
+              <span className="hidden sm:inline">svsd</span><span className="font-normal hidden sm:inline">mediplaza</span>
+              <span className="sm:hidden text-base">svsdmediplaza</span>
             </Link>
             <Button variant="ghost" className="hidden sm:flex items-center gap-1 text-xs px-2 text-foreground hover:text-primary">
               <MapPin size={16} />
