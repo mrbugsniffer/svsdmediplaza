@@ -10,6 +10,8 @@ export interface Product {
   featured?: boolean;
   stock: number;
   rating?: number; // Optional rating 1-5
+  createdAt?: any; // Firestore Timestamp
+  updatedAt?: any; // Firestore Timestamp
 }
 
 export interface CartItem extends Product {
@@ -17,10 +19,12 @@ export interface CartItem extends Product {
 }
 
 export interface Order {
-  id: string;
+  id: string; // Firestore document ID
+  userId?: string; // ID of the user who placed the order
+  customerEmail: string; // Email of the customer
   items: CartItem[];
   totalAmount: number;
-  orderDate: string;
+  orderDate: any; // Firestore Timestamp (will be set by serverTimestamp) / or Date string from mock
   status: 'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';
   shippingAddress: {
     fullName: string;
@@ -28,6 +32,8 @@ export interface Order {
     city: string;
     postalCode: string;
     country: string;
+    phone?: string;
   };
-  customerEmail: string;
+  createdAt: any; // Firestore Timestamp
+  // updatedAt?: any; // Optional: Firestore Timestamp for order updates
 }

@@ -7,25 +7,12 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { SidebarProvider, Sidebar, SidebarTrigger, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter } from '@/components/ui/sidebar';
 import { LayoutDashboard, Package, LogOut, Settings, Users, ShoppingCart, BarChart3 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+// import { Button } from '@/components/ui/button'; No longer needed here as SidebarMenuButton is used
 import { Toaster } from "@/components/ui/toaster";
-// Font imports are not needed here if RootLayout handles them
-// import { Geist, Geist_Mono } from 'next/font/google';
-
-// const geistSans = Geist({
-//   variable: '--font-geist-sans',
-//   subsets: ['latin'],
-// });
-
-// const geistMono = Geist_Mono({
-//   variable: '--font-geist-mono',
-//   subsets: ['latin'],
-// });
 
 
 const ADMIN_AUTH_KEY = 'svsdmediplaza_admin_auth';
 
-// SvsdMediPlazaLogo for Admin - simplified
 const SvsdMediPlazaAdminLogo = () => (
   <svg width="24" height="24" viewBox="0 0 100 100" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
     <path d="M68.3,20.3c-5.9-4.5-13.2-7.1-21-7.1c-12.5,0-23.8,6.3-30.4,15.9l-0.1,0.1C10.7,36.8,7,44.9,7,53.8 c0,9.1,3.9,17.3,10.2,23.1c6.6,6,15.3,9.5,24.8,9.5c7.8,0,15.1-2.6,21-7.1c6.1-4.7,10.4-11.3,12.4-18.9h-20 c-2.2,0-4-1.8-4-4s1.8-4,4-4h23.8c0.4-2.6,0.6-5.2,0.6-7.8c0-8.1-2.9-15.5-7.8-21.4C71.7,21.9,70,21,68.3,20.3z M54.8,68.4 c-3.6,2.8-8,4.4-12.8,4.4c-7.2,0-13.6-3.4-17.7-8.6c-4.4-5.2-6.7-11.6-6.7-18.4c0-6.6,2.2-12.8,6.4-17.9l0.1-0.1 c4.1-5.2,9.9-8.5,16.4-8.5c4.8,0,9.2,1.7,12.8,4.4c3.6,2.8,6.2,6.6,7.5,10.9H48.8c-2.2,0-4-1.8-4-4s1.8-4,4-4h17.1 C64.4,63.6,60.1,66.9,54.8,68.4z"/>
@@ -40,34 +27,48 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setIsClient(true);
-    const isAdminAuthenticated = localStorage.getItem(ADMIN_AUTH_KEY) === 'true';
-    if (!isAdminAuthenticated && pathname !== '/admin/login') { // also check if not already on login page
-      router.replace('/admin/login');
+    if (typeof window !== 'undefined') { // Ensure localStorage is accessed only on client
+        const isAdminAuthenticated = localStorage.getItem(ADMIN_AUTH_KEY) === 'true';
+        if (!isAdminAuthenticated && pathname !== '/admin/login') {
+            router.replace('/admin/login');
+        }
     }
-  }, [router, pathname]); // Added pathname to dependencies
+  }, [router, pathname]);
 
   const handleLogout = () => {
-    localStorage.removeItem(ADMIN_AUTH_KEY);
+    if (typeof window !== 'undefined') {
+        localStorage.removeItem(ADMIN_AUTH_KEY);
+    }
     router.push('/admin/login');
   };
 
-  if (!isClient || (localStorage.getItem(ADMIN_AUTH_KEY) !== 'true' && pathname !== '/admin/login')) {
-    // Show loading or redirecting state, or null if redirecting immediately
-    // Ensure this loading state doesn't render html/body
+  // Client-side check before rendering
+  if (!isClient) {
     return (
         <div className="flex justify-center items-center min-h-screen bg-muted">
             <p>Loading admin area...</p>
         </div>
     );
   }
+  
+  // Further check if authenticated, after isClient is true
+  if (localStorage.getItem(ADMIN_AUTH_KEY) !== 'true' && pathname !== '/admin/login') {
+     // router.replace('/admin/login') might already be called by useEffect
+     // This provides a fallback loading state if redirection hasn't completed
+    return (
+        <div className="flex justify-center items-center min-h-screen bg-muted">
+            <p>Redirecting to login...</p>
+        </div>
+    );
+  }
 
-  // If on login page, don't render the full admin sidebar layout
-  // The AdminLoginPage itself will provide its full-screen styling
+
   if (pathname === '/admin/login') {
     return (
       <>
+        {/* AdminLoginPage will provide its own full-screen styling */}
         {children}
-        <Toaster />
+        <Toaster /> {/* Toaster for admin login page */}
       </>
     );
   }
@@ -81,11 +82,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     { href: '/admin/settings', label: 'Settings', icon: Settings },
   ];
 
-  // Main admin layout with sidebar
   return (
     <>
       <SidebarProvider defaultOpen>
-        <div className="flex min-h-screen"> {/* Apply bg-muted here or rely on main tag below */}
+        <div className="flex min-h-screen">
           <Sidebar side="left" className="border-r bg-background text-foreground" collapsible="icon">
             <SidebarHeader className="p-4 border-b">
                 <Link href="/admin/dashboard" className="flex items-center gap-2 text-lg font-semibold text-primary">
@@ -124,6 +124,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </Sidebar>
           
           <div className="flex-1 flex flex-col">
+              {/* This header bar is primarily for the mobile sidebar trigger */}
               <div className="flex h-14 items-center px-4 sm:px-6 border-b bg-background md:hidden">
                   <SidebarTrigger/> 
               </div>
@@ -133,7 +134,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </div>
         </div>
       </SidebarProvider>
-      <Toaster />
+      <Toaster /> {/* Toaster for the rest of the admin portal */}
     </>
   );
 }

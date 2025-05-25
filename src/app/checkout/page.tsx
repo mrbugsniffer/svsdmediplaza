@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -11,10 +12,13 @@ import { Separator } from '@/components/ui/separator';
 import { CreditCard, ShoppingBag, AlertTriangle } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { z } from 'zod';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import Image from 'next/image';
+import { useAuth } from '@/context/auth-context';
+import { db } from '@/lib/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 const shippingSchema = z.object({
   fullName: z.string().min(2, "Full name is required"),
@@ -39,15 +43,16 @@ type PaymentFormData = z.infer<typeof paymentSchema>;
 
 
 export default function CheckoutPage() {
-  const { cartItems, cartTotal, clearCart } = useCart();
+  const { cartItems, cartTotal, clearCart, cartCount } = useCart();
+  const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [isClient, setIsClient] = useState(false);
+  const [isProcessingOrder, setIsProcessingOrder] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
     if (isClient && cartItems.length === 0) {
-      // Redirect to cart if cart is empty, but only on client after mount
       router.replace('/cart');
       toast({ title: "Your cart is empty", description: "Please add items to your cart before proceeding to checkout.", variant: "destructive" });
     }
@@ -57,7 +62,7 @@ export default function CheckoutPage() {
   const shippingForm = useForm<ShippingFormData>({
     resolver: zodResolver(shippingSchema),
     defaultValues: {
-      fullName: '', address: '', city: '', postalCode: '', country: '', email: '', phone: ''
+      fullName: '', address: '', city: '', postalCode: '', country: '', email: user?.email || '', phone: ''
     }
   });
 
@@ -66,34 +71,70 @@ export default function CheckoutPage() {
       defaultValues: { cardNumber: '', expiryDate: '', cvv: ''}
   });
 
+  useEffect(() => {
+    if (user?.email && !shippingForm.getValues('email')) {
+        shippingForm.setValue('email', user.email);
+    }
+    if (user?.displayName && !shippingForm.getValues('fullName')) {
+        shippingForm.setValue('fullName', user.displayName);
+    }
+  }, [user, shippingForm]);
+
 
   const taxRate = 0.08; // 8%
   const shippingCost = cartTotal > 50 ? 0 : 5.00; // Free shipping over $50
   const taxes = cartTotal * taxRate;
   const finalTotal = cartTotal + taxes + shippingCost;
 
-  const handlePlaceOrder = async (data: ShippingFormData) => {
+  const handlePlaceOrder = async (shippingData: ShippingFormData) => {
+    setIsProcessingOrder(true);
     // Simulate payment processing
     await paymentForm.trigger(); // Validate payment form
     if (!paymentForm.formState.isValid) {
         toast({ title: "Payment Error", description: "Please correct the errors in the payment details.", variant: "destructive" });
+        setIsProcessingOrder(false);
         return;
     }
 
-    // In a real app, you would send this data to your backend/Stripe
-    console.log('Shipping Details:', data);
-    console.log('Payment Details:', paymentForm.getValues());
-    console.log('Order Total:', finalTotal);
+    try {
+      const orderData = {
+        userId: user?.uid || undefined,
+        customerEmail: shippingData.email,
+        items: cartItems,
+        totalAmount: finalTotal,
+        orderDate: serverTimestamp(), // This will be set by Firestore server
+        createdAt: serverTimestamp(),
+        status: 'Pending' as const,
+        shippingAddress: {
+          fullName: shippingData.fullName,
+          address: shippingData.address,
+          city: shippingData.city,
+          postalCode: shippingData.postalCode,
+          country: shippingData.country,
+          phone: shippingData.phone || undefined,
+        },
+      };
 
-    // Simulate order placement
-    const mockOrderId = `ORD-${Date.now()}`;
-    toast({ title: "Order Placed!", description: `Your order ${mockOrderId} has been successfully placed.` });
-    clearCart();
-    router.push(`/order-confirmation/${mockOrderId}`);
+      const ordersCollectionRef = collection(db, 'orders');
+      const docRef = await addDoc(ordersCollectionRef, orderData);
+      
+      toast({ title: "Order Placed!", description: `Your order ${docRef.id} has been successfully placed.` });
+      clearCart();
+      router.push(`/order-confirmation/${docRef.id}`);
+
+    } catch (error: any) {
+        console.error("Error placing order:", error);
+        toast({
+            title: "Order Placement Failed",
+            description: error.message || "Could not place your order. Please try again.",
+            variant: "destructive",
+        });
+    } finally {
+        setIsProcessingOrder(false);
+    }
   };
   
   if (!isClient || cartItems.length === 0) {
-    // Show loading or minimal content until client-side check completes
     return (
       <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
           <p className="text-lg text-muted-foreground">Loading checkout...</p>
@@ -182,7 +223,7 @@ export default function CheckoutPage() {
                         <AlertTriangle className="h-5 w-5 mr-3 mt-1 shrink-0" />
                         <div>
                             <p className="font-semibold">This is a mock payment form.</p>
-                            <p className="text-sm">Do not enter real credit card details. This form is for demonstration purposes only.</p>
+                            <p className="text-sm">Do not enter real credit card details. This form is for demonstration purposes only. No actual payment will be processed.</p>
                         </div>
                     </div>
                 </div>
@@ -198,7 +239,7 @@ export default function CheckoutPage() {
                     <div className="grid sm:grid-cols-2 gap-4">
                         <FormField control={paymentForm.control} name="expiryDate" render={({ field }) => (
                             <FormItem>
-                            <FormLabel>Expiry Date</FormLabel>
+                            <FormLabel>Expiry Date (MM/YY)</FormLabel>
                             <FormControl><Input placeholder="MM/YY" {...field} /></FormControl>
                             <FormMessage />
                             </FormItem>
@@ -239,16 +280,16 @@ export default function CheckoutPage() {
               </div>
               <Separator />
               <div className="space-y-2 mt-4">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal</span>
-                  <span>${cartTotal.toFixed(2)}</span>
+                 <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Items ({cartCount})</span>
+                    <span>${cartTotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Shipping</span>
                   <span>{shippingCost > 0 ? `$${shippingCost.toFixed(2)}` : 'Free'}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Taxes</span>
+                  <span className="text-muted-foreground">Taxes (8%)</span>
                   <span>${taxes.toFixed(2)}</span>
                 </div>
                 <Separator />
@@ -260,8 +301,8 @@ export default function CheckoutPage() {
             </CardContent>
             <CardFooter>
               <Button type="submit" form="checkout-form" size="lg" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
-                disabled={shippingForm.formState.isSubmitting || paymentForm.formState.isSubmitting}>
-                {shippingForm.formState.isSubmitting ? 'Processing...' : 'Place Order'}
+                disabled={isProcessingOrder || shippingForm.formState.isSubmitting || paymentForm.formState.isSubmitting}>
+                {isProcessingOrder ? 'Processing Order...' : 'Place Order'}
               </Button>
             </CardFooter>
           </Card>
