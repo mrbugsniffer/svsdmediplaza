@@ -50,8 +50,8 @@ export function ProductFilters({ filters, setFilters, maxPrice, categories, bran
   };
 
   return (
-    <aside className="space-y-6 p-6 bg-card rounded-xl shadow-lg">
-      <h3 className="text-xl font-semibold text-foreground">Filters</h3>
+    <aside className="space-y-4 p-4 bg-card rounded-xl shadow-lg">
+      <h3 className="text-lg font-semibold text-foreground">Filters</h3>
       
       <div>
         <Label htmlFor="search" className="text-sm font-medium">Search Products</Label>
@@ -61,14 +61,14 @@ export function ProductFilters({ filters, setFilters, maxPrice, categories, bran
           placeholder="Search by name or description..."
           value={filters.searchQuery}
           onChange={handleSearchChange}
-          className="mt-1"
+          className="mt-1 h-9 text-sm"
         />
       </div>
 
       <div>
         <Label htmlFor="category" className="text-sm font-medium">Category</Label>
         <Select value={filters.category || 'all'} onValueChange={handleCategoryChange}>
-          <SelectTrigger id="category" className="mt-1">
+          <SelectTrigger id="category" className="mt-1 h-9 text-sm">
             <SelectValue placeholder="Select category" />
           </SelectTrigger>
           <SelectContent>
@@ -83,7 +83,7 @@ export function ProductFilters({ filters, setFilters, maxPrice, categories, bran
       <div>
         <Label htmlFor="brand" className="text-sm font-medium">Brand</Label>
         <Select value={filters.brand || 'all'} onValueChange={handleBrandChange}>
-          <SelectTrigger id="brand" className="mt-1">
+          <SelectTrigger id="brand" className="mt-1 h-9 text-sm">
             <SelectValue placeholder="Select brand" />
           </SelectTrigger>
           <SelectContent>
@@ -97,7 +97,7 @@ export function ProductFilters({ filters, setFilters, maxPrice, categories, bran
 
       <div>
         <Label className="text-sm font-medium">Price Range</Label>
-        <div className="mt-2 flex justify-between text-sm text-muted-foreground">
+        <div className="mt-1 flex justify-between text-xs text-muted-foreground">
           <span>${filters.priceRange[0]}</span>
           <span>${filters.priceRange[1] > maxPrice ? maxPrice : filters.priceRange[1]}</span>
         </div>
@@ -112,7 +112,7 @@ export function ProductFilters({ filters, setFilters, maxPrice, categories, bran
         />
       </div>
 
-      <Button onClick={resetFilters} variant="outline" className="w-full">
+      <Button onClick={resetFilters} variant="outline" size="sm" className="w-full">
         Reset Filters
       </Button>
     </aside>

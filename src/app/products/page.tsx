@@ -113,13 +113,13 @@ export default function ProductsPage() {
   if (!isClient) {
     // Simplified SSR/prerender skeleton
     return (
-      <div className="flex flex-col lg:flex-row gap-8">
+      <div className="flex flex-col lg:flex-row gap-6">
         <div className="w-full lg:w-1/4 animate-pulse">
-          <div className="p-6 bg-card rounded-xl shadow-lg h-96"></div>
+          <div className="p-4 bg-card rounded-xl shadow-lg h-96"></div>
         </div>
         <div className="w-full lg:w-3/4">
-          <div className="h-10 bg-muted rounded w-1/3 mb-6 animate-pulse"></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className="h-10 bg-muted rounded w-1/3 mb-4 animate-pulse"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {[...Array(6)].map((_, i) => (
               <div key={i} className="bg-card rounded-xl shadow-lg p-4 animate-pulse h-80"></div>
             ))}
@@ -133,9 +133,9 @@ export default function ProductsPage() {
 
   return (
     <div>
-      <h1 className="text-4xl font-bold text-foreground mb-8">Our Products</h1>
+      <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-6">Our Products</h1>
       
-      <div className="flex flex-col lg:flex-row gap-8">
+      <div className="flex flex-col lg:flex-row gap-6">
         {isMobile ? (
           <Sheet>
             <SheetTrigger asChild>
@@ -144,8 +144,8 @@ export default function ProductsPage() {
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-full max-w-sm overflow-y-auto p-0">
-              <div className="p-6 border-b">
-                 <h3 className="text-xl font-semibold text-foreground">Sort By</h3>
+              <div className="p-4 border-b">
+                 <h3 className="text-lg font-semibold text-foreground">Sort By</h3>
                  <Select value={sortOption} onValueChange={(value) => setSortOption(value as SortOption)}>
                   <SelectTrigger className="w-full mt-2">
                     <SelectValue placeholder="Sort by" />
@@ -171,11 +171,11 @@ export default function ProductsPage() {
 
         <div className="w-full lg:w-3/4">
           {!isMobile && (
-            <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4 p-4 bg-card rounded-lg shadow">
-              <p className="text-muted-foreground text-sm">Showing {filteredProducts.length} of {allProducts.length} products</p>
+            <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4 p-3 bg-card rounded-lg shadow">
+              <p className="text-muted-foreground text-xs sm:text-sm">Showing {filteredProducts.length} of {allProducts.length} products</p>
               <div className="flex items-center gap-2">
                   <Select value={sortOption} onValueChange={(value) => setSortOption(value as SortOption)}>
-                    <SelectTrigger className="w-[180px]">
+                    <SelectTrigger className="w-[160px] sm:w-[180px] h-9 text-xs sm:text-sm">
                       <SelectValue placeholder="Sort by" />
                     </SelectTrigger>
                     <SelectContent>
@@ -187,11 +187,11 @@ export default function ProductsPage() {
                       <SelectItem value="name-desc">Name: Z to A</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('grid')} aria-label="Grid view">
-                      <LayoutGrid size={20} />
+                  <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" className="h-9 w-9" onClick={() => setViewMode('grid')} aria-label="Grid view">
+                      <LayoutGrid size={18} />
                   </Button>
-                  <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('list')} aria-label="List view">
-                      <List size={20} />
+                  <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" className="h-9 w-9" onClick={() => setViewMode('list')} aria-label="List view">
+                      <List size={18} />
                   </Button>
               </div>
             </div>
@@ -203,7 +203,7 @@ export default function ProductsPage() {
                 <p className="text-xl text-muted-foreground">Loading products...</p>
             </div>
           ) : filteredProducts.length > 0 ? (
-            <div className={`grid gap-6 ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'}`}>
+            <div className={`grid gap-4 ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'}`}>
               {filteredProducts.map(product => (
                 <ProductCard key={product.id} product={product} />
               ))}
