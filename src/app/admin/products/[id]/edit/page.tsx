@@ -11,10 +11,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { mockCategories, mockBrands, getProductById as fetchMockProductById } from '@/lib/mock-data';
-import type { Product } from '@/types';
+import { mockCategories, mockBrands } from '@/lib/mock-data'; // Using mock data for dropdowns for now
 import Link from 'next/link';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Package } from 'lucide-react';
+import { db } from '@/lib/firebase';
+import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import type { Product } from '@/types';
+
 
 interface ProductFormData {
   name: string;
@@ -35,6 +38,7 @@ export default function EditProductPage() {
   const productId = params.id as string;
 
   const [formData, setFormData] = useState<ProductFormData | null>(null);
+  const [originalProductName, setOriginalProductName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -43,25 +47,29 @@ export default function EditProductPage() {
       const fetchProduct = async () => {
         setIsLoading(true);
         try {
-          // In a real app, fetch from API: const product = await getProductByIdAPI(productId);
-          const product = await fetchMockProductById(productId); // Using mock data fetcher
-          if (product) {
+          const productDocRef = doc(db, 'products', productId);
+          const productSnap = await getDoc(productDocRef);
+
+          if (productSnap.exists()) {
+            const productData = productSnap.data() as Product;
             setFormData({
-              name: product.name,
-              description: product.description,
-              price: product.price.toString(),
-              category: product.category,
-              brand: product.brand,
-              stock: product.stock.toString(),
-              imageUrl: product.imageUrl,
-              featured: product.featured || false,
-              rating: product.rating?.toString() || '',
+              name: productData.name,
+              description: productData.description,
+              price: productData.price.toString(),
+              category: productData.category,
+              brand: productData.brand,
+              stock: productData.stock.toString(),
+              imageUrl: productData.imageUrl,
+              featured: productData.featured || false,
+              rating: productData.rating?.toString() || '',
             });
+            setOriginalProductName(productData.name);
           } else {
             toast({ title: "Error", description: "Product not found.", variant: "destructive" });
             router.push('/admin/products');
           }
         } catch (error) {
+          console.error("Error fetching product from Firestore:", error);
           toast({ title: "Error", description: "Failed to fetch product details.", variant: "destructive" });
         } finally {
           setIsLoading(false);
@@ -90,7 +98,6 @@ export default function EditProductPage() {
     if (!formData) return;
     setIsSubmitting(true);
 
-    // Basic validation
     if (!formData.name || !formData.price || !formData.category || !formData.brand || !formData.stock) {
         toast({ title: "Missing Fields", description: "Please fill in all required fields.", variant: "destructive" });
         setIsSubmitting(false);
@@ -98,23 +105,27 @@ export default function EditProductPage() {
     }
 
     try {
-      // In a real app, you would send this data to your backend API
-      console.log('Updating product:', productId, {
-        ...formData,
+      const productDocRef = doc(db, 'products', productId);
+      await updateDoc(productDocRef, {
+        name: formData.name,
+        description: formData.description,
         price: parseFloat(formData.price),
+        category: formData.category,
+        brand: formData.brand,
         stock: parseInt(formData.stock, 10),
-        rating: formData.rating ? parseFloat(formData.rating) : undefined,
+        imageUrl: formData.imageUrl,
+        featured: formData.featured,
+        rating: formData.rating ? parseFloat(formData.rating) : null,
+        updatedAt: serverTimestamp(),
       });
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
 
       toast({
         title: "Product Updated",
-        description: `${formData.name} has been successfully updated. (Demo - not persistent)`,
+        description: `${formData.name} has been successfully updated.`,
       });
       router.push('/admin/products');
     } catch (error) {
-      console.error("Error updating product:", error);
+      console.error("Error updating product in Firestore:", error);
       toast({
         title: "Error Updating Product",
         description: "An unexpected error occurred. Please try again.",
@@ -126,11 +137,15 @@ export default function EditProductPage() {
   };
 
   if (isLoading) {
-    return <div className="flex justify-center items-center min-h-[calc(100vh-200px)]"><p>Loading product details...</p></div>;
+    return (
+        <div className="flex flex-col justify-center items-center min-h-[calc(100vh-200px)]">
+            <Package size={32} className="animate-pulse mb-2" />
+            <p>Loading product details...</p>
+        </div>
+    );
   }
 
   if (!formData) {
-    // This case should ideally be handled by the redirect in useEffect if product not found
     return <div className="flex justify-center items-center min-h-[calc(100vh-200px)]"><p>Product data could not be loaded.</p></div>;
   }
 
@@ -144,7 +159,7 @@ export default function EditProductPage() {
       <Card className="w-full max-w-2xl mx-auto shadow-xl">
         <CardHeader>
           <CardTitle className="text-2xl font-bold">Edit Product</CardTitle>
-          <CardDescription>Modify the details for &quot;{formData.name}&quot;.</CardDescription>
+          <CardDescription>Modify the details for &quot;{originalProductName || formData.name}&quot;.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -188,7 +203,7 @@ export default function EditProductPage() {
             </div>
              <div className="space-y-2">
               <Label htmlFor="imageUrl">Image URL</Label>
-              <Input id="imageUrl" name="imageUrl" value={formData.imageUrl} onChange={handleChange} disabled={isSubmitting} />
+              <Input id="imageUrl" name="imageUrl" value={formData.imageUrl} onChange={handleChange} disabled={isSubmitting} placeholder="https://placehold.co/600x400.png" />
             </div>
              <div className="space-y-2">
               <Label htmlFor="rating">Rating (Optional, 1-5)</Label>

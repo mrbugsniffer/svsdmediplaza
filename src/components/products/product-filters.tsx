@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Dispatch, SetStateAction } from 'react';
@@ -5,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { mockBrands, mockCategories } from '@/lib/mock-data';
 import { Input } from '../ui/input';
 
 export interface Filters {
@@ -19,9 +19,11 @@ interface ProductFiltersProps {
   filters: Filters;
   setFilters: Dispatch<SetStateAction<Filters>>;
   maxPrice: number;
+  categories: string[]; // Pass categories for dropdown
+  brands: string[];     // Pass brands for dropdown
 }
 
-export function ProductFilters({ filters, setFilters, maxPrice }: ProductFiltersProps) {
+export function ProductFilters({ filters, setFilters, maxPrice, categories, brands }: ProductFiltersProps) {
   const handleCategoryChange = (value: string) => {
     setFilters((prev) => ({ ...prev, category: value === 'all' ? '' : value }));
   };
@@ -71,7 +73,7 @@ export function ProductFilters({ filters, setFilters, maxPrice }: ProductFilters
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Categories</SelectItem>
-            {mockCategories.map((cat) => (
+            {categories.map((cat) => (
               <SelectItem key={cat} value={cat}>{cat}</SelectItem>
             ))}
           </SelectContent>
@@ -86,7 +88,7 @@ export function ProductFilters({ filters, setFilters, maxPrice }: ProductFilters
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Brands</SelectItem>
-            {mockBrands.map((brand) => (
+            {brands.map((brand) => (
               <SelectItem key={brand} value={brand}>{brand}</SelectItem>
             ))}
           </SelectContent>
@@ -97,13 +99,13 @@ export function ProductFilters({ filters, setFilters, maxPrice }: ProductFilters
         <Label className="text-sm font-medium">Price Range</Label>
         <div className="mt-2 flex justify-between text-sm text-muted-foreground">
           <span>${filters.priceRange[0]}</span>
-          <span>${filters.priceRange[1]}</span>
+          <span>${filters.priceRange[1] > maxPrice ? maxPrice : filters.priceRange[1]}</span>
         </div>
         <Slider
           min={0}
           max={maxPrice}
           step={1}
-          value={filters.priceRange}
+          value={[filters.priceRange[0], filters.priceRange[1] > maxPrice ? maxPrice : filters.priceRange[1]]}
           onValueChange={handlePriceChange}
           className="mt-2"
           minStepsBetweenThumbs={1}

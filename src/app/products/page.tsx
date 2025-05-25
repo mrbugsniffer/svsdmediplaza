@@ -1,30 +1,38 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
 import { ProductCard } from '@/components/products/product-card';
 import { ProductFilters, type Filters } from '@/components/products/product-filters';
-import { mockProducts } from '@/lib/mock-data';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Filter, LayoutGrid, List } from 'lucide-react';
+import { Filter, LayoutGrid, List, Package } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { db } from '@/lib/firebase';
+import { collection, getDocs, query, where, orderBy, onSnapshot, QuerySnapshot, DocumentData } from 'firebase/firestore';
+import type { Product } from '@/types';
+import { mockCategories, mockBrands } from '@/lib/mock-data'; // Still using for filter options
+import { useToast } from "@/hooks/use-toast";
 
-type SortOption = 'price-asc' | 'price-desc' | 'name-asc' | 'name-desc' | 'featured';
+type SortOption = 'price-asc' | 'price-desc' | 'name-asc' | 'name-desc' | 'featured' | 'rating';
 
-const MAX_PRICE = Math.max(...mockProducts.map(p => p.price), 100); // Fallback to 100 if no products
+const INITIAL_MAX_PRICE = 500; // Initial max price for slider, can be adjusted
 
 export default function ProductsPage() {
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [maxPrice, setMaxPrice] = useState(INITIAL_MAX_PRICE);
   const [filters, setFilters] = useState<Filters>({
     category: '',
     brand: '',
-    priceRange: [0, MAX_PRICE],
+    priceRange: [0, INITIAL_MAX_PRICE],
     searchQuery: '',
   });
   const [sortOption, setSortOption] = useState<SortOption>('featured');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isClient, setIsClient] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
   
   useEffect(() => {
     setIsClient(true);
@@ -32,11 +40,46 @@ export default function ProductsPage() {
 
   const isMobile = useIsMobile();
 
+  useEffect(() => {
+    setIsLoading(true);
+    const productsCollectionRef = collection(db, 'products');
+    
+    const unsubscribe = onSnapshot(productsCollectionRef, (snapshot: QuerySnapshot<DocumentData>) => {
+      const productsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      } as Product));
+      setAllProducts(productsData);
+      
+      if (productsData.length > 0) {
+        const newMaxPrice = Math.max(...productsData.map(p => p.price), INITIAL_MAX_PRICE);
+        setMaxPrice(newMaxPrice);
+        // Update priceRange filter if its max is lower than newMaxPrice
+        setFilters(prevFilters => ({
+            ...prevFilters,
+            priceRange: [prevFilters.priceRange[0], Math.max(prevFilters.priceRange[1], newMaxPrice)]
+        }));
+      } else {
+        setMaxPrice(INITIAL_MAX_PRICE);
+      }
+      setIsLoading(false);
+    }, (error) => {
+      console.error("Error fetching products:", error);
+      toast({ title: "Error", description: "Could not fetch products.", variant: "destructive" });
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [toast]);
+
+
   const filteredProducts = useMemo(() => {
-    let products = mockProducts.filter(product => {
+    let products = [...allProducts]; // Create a copy to sort
+
+    products = products.filter(product => {
       const searchLower = filters.searchQuery.toLowerCase();
       const nameMatch = product.name.toLowerCase().includes(searchLower);
-      const descriptionMatch = product.description.toLowerCase().includes(searchLower);
+      const descriptionMatch = product.description?.toLowerCase().includes(searchLower) || false;
       const categoryMatch = filters.category ? product.category === filters.category : true;
       const brandMatch = filters.brand ? product.brand === filters.brand : true;
       const priceMatch = product.price >= filters.priceRange[0] && product.price <= filters.priceRange[1];
@@ -56,39 +99,29 @@ export default function ProductsPage() {
       case 'name-desc':
         products.sort((a, b) => b.name.localeCompare(a.name));
         break;
+      case 'rating':
+        products.sort((a,b) => (b.rating || 0) - (a.rating || 0));
+        break;
       case 'featured':
+      default:
         products.sort((a,b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0) || a.name.localeCompare(b.name));
         break;
     }
     return products;
-  }, [filters, sortOption]);
+  }, [allProducts, filters, sortOption]);
 
   if (!isClient) {
-    // Render basic loading state or skeleton for SSR/prerender
+    // Simplified SSR/prerender skeleton
     return (
       <div className="flex flex-col lg:flex-row gap-8">
-        <div className="w-full lg:w-1/4">
-          <div className="p-6 bg-card rounded-xl shadow-lg animate-pulse">
-            <div className="h-8 bg-muted rounded w-1/2 mb-6"></div>
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="space-y-2 mb-4">
-                <div className="h-4 bg-muted rounded w-1/3"></div>
-                <div className="h-10 bg-muted rounded"></div>
-              </div>
-            ))}
-            <div className="h-10 bg-muted rounded w-full mt-6"></div>
-          </div>
+        <div className="w-full lg:w-1/4 animate-pulse">
+          <div className="p-6 bg-card rounded-xl shadow-lg h-96"></div>
         </div>
         <div className="w-full lg:w-3/4">
-          <div className="h-10 bg-muted rounded w-1/3 mb-6"></div>
+          <div className="h-10 bg-muted rounded w-1/3 mb-6 animate-pulse"></div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="bg-card rounded-xl shadow-lg p-4 animate-pulse">
-                <div className="aspect-[4/3] bg-muted rounded mb-4"></div>
-                <div className="h-6 bg-muted rounded w-3/4 mb-2"></div>
-                <div className="h-4 bg-muted rounded w-1/2 mb-2"></div>
-                <div className="h-8 bg-muted rounded w-1/3"></div>
-              </div>
+              <div key={i} className="bg-card rounded-xl shadow-lg p-4 animate-pulse h-80"></div>
             ))}
           </div>
         </div>
@@ -96,8 +129,7 @@ export default function ProductsPage() {
     );
   }
 
-
-  const filtersComponent = <ProductFilters filters={filters} setFilters={setFilters} maxPrice={MAX_PRICE} />;
+  const filtersComponent = <ProductFilters filters={filters} setFilters={setFilters} maxPrice={maxPrice} categories={mockCategories} brands={mockBrands} />;
 
   return (
     <div>
@@ -108,10 +140,26 @@ export default function ProductsPage() {
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="outline" className="lg:hidden mb-4 w-full">
-                <Filter size={18} className="mr-2" /> Filters
+                <Filter size={18} className="mr-2" /> Filters & Sort
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-full max-w-sm overflow-y-auto">
+            <SheetContent side="left" className="w-full max-w-sm overflow-y-auto p-0">
+              <div className="p-6 border-b">
+                 <h3 className="text-xl font-semibold text-foreground">Sort By</h3>
+                 <Select value={sortOption} onValueChange={(value) => setSortOption(value as SortOption)}>
+                  <SelectTrigger className="w-full mt-2">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="featured">Featured</SelectItem>
+                    <SelectItem value="rating">Top Rated</SelectItem>
+                    <SelectItem value="price-asc">Price: Low to High</SelectItem>
+                    <SelectItem value="price-desc">Price: High to Low</SelectItem>
+                    <SelectItem value="name-asc">Name: A to Z</SelectItem>
+                    <SelectItem value="name-desc">Name: Z to A</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               {filtersComponent}
             </SheetContent>
           </Sheet>
@@ -122,40 +170,50 @@ export default function ProductsPage() {
         )}
 
         <div className="w-full lg:w-3/4">
-          <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4 p-4 bg-card rounded-lg shadow">
-            <p className="text-muted-foreground text-sm">Showing {filteredProducts.length} products</p>
-            <div className="flex items-center gap-2">
-                <Select value={sortOption} onValueChange={(value) => setSortOption(value as SortOption)}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Sort by" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="featured">Featured</SelectItem>
-                    <SelectItem value="price-asc">Price: Low to High</SelectItem>
-                    <SelectItem value="price-desc">Price: High to Low</SelectItem>
-                    <SelectItem value="name-asc">Name: A to Z</SelectItem>
-                    <SelectItem value="name-desc">Name: Z to A</SelectItem>
-                  </SelectContent>
-                </Select>
-                 <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('grid')} aria-label="Grid view">
-                    <LayoutGrid size={20} />
-                </Button>
-                <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('list')} aria-label="List view">
-                    <List size={20} />
-                </Button>
+          {!isMobile && (
+            <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4 p-4 bg-card rounded-lg shadow">
+              <p className="text-muted-foreground text-sm">Showing {filteredProducts.length} of {allProducts.length} products</p>
+              <div className="flex items-center gap-2">
+                  <Select value={sortOption} onValueChange={(value) => setSortOption(value as SortOption)}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Sort by" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="featured">Featured</SelectItem>
+                      <SelectItem value="rating">Top Rated</SelectItem>
+                      <SelectItem value="price-asc">Price: Low to High</SelectItem>
+                      <SelectItem value="price-desc">Price: High to Low</SelectItem>
+                      <SelectItem value="name-asc">Name: A to Z</SelectItem>
+                      <SelectItem value="name-desc">Name: Z to A</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('grid')} aria-label="Grid view">
+                      <LayoutGrid size={20} />
+                  </Button>
+                  <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('list')} aria-label="List view">
+                      <List size={20} />
+                  </Button>
+              </div>
             </div>
-          </div>
-
-          {filteredProducts.length > 0 ? (
+          )}
+          
+          {isLoading ? (
+             <div className="flex justify-center items-center py-20">
+                <Package size={48} className="animate-pulse mr-4 text-primary" />
+                <p className="text-xl text-muted-foreground">Loading products...</p>
+            </div>
+          ) : filteredProducts.length > 0 ? (
             <div className={`grid gap-6 ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'}`}>
               {filteredProducts.map(product => (
                 <ProductCard key={product.id} product={product} />
               ))}
             </div>
           ) : (
-            <div className="text-center py-12">
+            <div className="text-center py-20">
+              <Package size={48} className="mx-auto text-muted-foreground mb-4" />
               <h3 className="text-2xl font-semibold text-foreground mb-2">No Products Found</h3>
               <p className="text-muted-foreground">Try adjusting your filters or search term.</p>
+              {filters.searchQuery && <p className="text-sm text-muted-foreground mt-1">Search: "{filters.searchQuery}"</p>}
             </div>
           )}
         </div>

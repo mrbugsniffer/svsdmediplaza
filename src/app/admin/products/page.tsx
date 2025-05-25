@@ -4,29 +4,84 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { mockProducts } from '@/lib/mock-data'; // Using mock data for now
 import type { Product } from '@/types';
-import { PlusCircle, Edit, Trash2, Search } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Search, Package } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Input } from '@/components/ui/input';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { db } from '@/lib/firebase';
+import { collection, getDocs, deleteDoc, doc, onSnapshot, QuerySnapshot, DocumentData } from 'firebase/firestore';
+import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function AdminProductsPage() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
 
-  // In a real app, this would come from a state management solution or API call
-  const products = mockProducts.filter(product => 
+  useEffect(() => {
+    setIsLoading(true);
+    const productsCollectionRef = collection(db, 'products');
+    
+    // Use onSnapshot for real-time updates
+    const unsubscribe = onSnapshot(productsCollectionRef, (snapshot: QuerySnapshot<DocumentData>) => {
+      const productsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      } as Product));
+      setProducts(productsData);
+      setIsLoading(false);
+    }, (error) => {
+      console.error("Error fetching products from Firestore:", error);
+      toast({ title: "Error", description: "Failed to fetch products.", variant: "destructive" });
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe(); // Cleanup listener on component unmount
+  }, [toast]);
+
+  const filteredProducts = products.filter(product => 
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.brand.toLowerCase().includes(searchTerm.toLowerCase())
+    (product.category && product.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (product.brand && product.brand.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const handleDeleteProduct = (productId: string) => {
-    // Implement actual delete logic here (e.g., API call)
-    alert(`Demo: Delete product ${productId}. This would call an API.`);
-    // To reflect change with mock data, you'd need to update the mockProducts array
-    // and potentially re-filter or manage state. For now, it's just an alert.
+  const confirmDeleteProduct = (product: Product) => {
+    setProductToDelete(product);
+  };
+
+  const handleDeleteProduct = async () => {
+    if (!productToDelete) return;
+    try {
+      await deleteDoc(doc(db, 'products', productToDelete.id));
+      toast({
+        title: "Product Deleted",
+        description: `${productToDelete.name} has been successfully deleted.`,
+      });
+      setProductToDelete(null); // Close dialog
+      // Real-time listener will update the list
+    } catch (error) {
+      console.error("Error deleting product from Firestore:", error);
+      toast({
+        title: "Error Deleting Product",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+      setProductToDelete(null);
+    }
   };
 
   return (
@@ -47,7 +102,7 @@ export default function AdminProductsPage() {
         <CardHeader>
             <CardTitle>Product List</CardTitle>
             <CardDescription>
-                Search and manage your existing products. Total: {products.length} products.
+                Search and manage your existing products. Total: {filteredProducts.length} products.
             </CardDescription>
         </CardHeader>
         <CardContent>
@@ -62,6 +117,12 @@ export default function AdminProductsPage() {
                 />
             </div>
             <div className="overflow-x-auto">
+                {isLoading ? (
+                    <div className="flex justify-center items-center py-10">
+                        <Package size={32} className="animate-pulse mr-2" />
+                        <p>Loading products...</p>
+                    </div>
+                ) : (
                 <Table>
                 <TableHeader>
                     <TableRow>
@@ -75,22 +136,22 @@ export default function AdminProductsPage() {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {products.length > 0 ? products.map((product) => (
+                    {filteredProducts.length > 0 ? filteredProducts.map((product) => (
                     <TableRow key={product.id}>
                         <TableCell>
                         <Image
-                            src={product.imageUrl}
+                            src={product.imageUrl || 'https://placehold.co/40x40.png'}
                             alt={product.name}
                             width={40}
                             height={40}
                             className="rounded object-cover aspect-square"
-                            data-ai-hint={`${product.category.toLowerCase()} product`}
+                            data-ai-hint={`${product.category?.toLowerCase()} product`}
                         />
                         </TableCell>
                         <TableCell className="font-medium">{product.name}</TableCell>
                         <TableCell>{product.category}</TableCell>
                         <TableCell>{product.brand}</TableCell>
-                        <TableCell className="text-right">${product.price.toFixed(2)}</TableCell>
+                        <TableCell className="text-right">${product.price?.toFixed(2)}</TableCell>
                         <TableCell className="text-right">{product.stock}</TableCell>
                         <TableCell className="text-center">
                         <div className="flex justify-center gap-2">
@@ -100,30 +161,50 @@ export default function AdminProductsPage() {
                                     <span className="sr-only">Edit {product.name}</span>
                                 </Link>
                             </Button>
-                            <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => handleDeleteProduct(product.id)}
-                            className="text-destructive hover:text-destructive hover:border-destructive/50"
-                            >
-                            <Trash2 size={16} />
-                            <span className="sr-only">Delete {product.name}</span>
-                            </Button>
+                            <AlertDialogTrigger asChild>
+                                <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => confirmDeleteProduct(product)}
+                                className="text-destructive hover:text-destructive hover:border-destructive/50"
+                                >
+                                <Trash2 size={16} />
+                                <span className="sr-only">Delete {product.name}</span>
+                                </Button>
+                            </AlertDialogTrigger>
                         </div>
                         </TableCell>
                     </TableRow>
                     )) : (
                         <TableRow>
                             <TableCell colSpan={7} className="text-center h-24">
-                                No products found matching your search.
+                                {products.length === 0 ? "No products found. Add your first product!" : "No products found matching your search."}
                             </TableCell>
                         </TableRow>
                     )}
                 </TableBody>
                 </Table>
+                )}
             </div>
         </CardContent>
        </Card>
+        <AlertDialog open={!!productToDelete} onOpenChange={(open) => !open && setProductToDelete(null)}>
+            <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the product
+                "{productToDelete?.name}" from the database.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setProductToDelete(null)}>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteProduct} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
+                Yes, delete product
+                </AlertDialogAction>
+            </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     </div>
   );
 }

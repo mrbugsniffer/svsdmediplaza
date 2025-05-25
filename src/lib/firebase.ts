@@ -3,16 +3,14 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getAnalytics, isSupported } from "firebase/analytics";
-
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+import { getFirestore } from "firebase/firestore"; // Import Firestore
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyBzZlpqCuIYGCCGIRqcf8eA5jvniHRYo_s",
   authDomain: "svsdmediplaza-9cbae.firebaseapp.com",
   projectId: "svsdmediplaza-9cbae",
-  storageBucket: "svsdmediplaza-9cbae.appspot.com", // Corrected from firebasestorage.app
+  storageBucket: "svsdmediplaza-9cbae.appspot.com", // Corrected common format
   messagingSenderId: "272750299862",
   appId: "1:272750299862:web:c91097b0f4b6cb3d59d777",
   measurementId: "G-5K8Q3F2B1K"
@@ -37,5 +35,6 @@ if (typeof window !== 'undefined') {
 }
 
 export const auth = getAuth(app);
-export { app, analytics }; // Export app and analytics
-export default app; // Default export app for broader compatibility if needed
+export const db = getFirestore(app); // Export Firestore instance
+export { app, analytics };
+export default app;

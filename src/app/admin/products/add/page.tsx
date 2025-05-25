@@ -11,22 +11,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { mockCategories, mockBrands } from '@/lib/mock-data'; // Using mock data for dropdowns
+import { mockCategories, mockBrands } from '@/lib/mock-data'; // Using mock data for dropdowns for now
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
+import { db } from '@/lib/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
-
-// This would ideally come from your types definition
 interface ProductFormData {
   name: string;
   description: string;
-  price: string; // String for input, convert to number on submit
+  price: string;
   category: string;
   brand: string;
-  stock: string; // String for input, convert to number on submit
+  stock: string;
   imageUrl: string;
   featured: boolean;
-  rating?: string; // Optional, string for input
+  rating?: string;
 }
 
 export default function AddProductPage() {
@@ -39,7 +39,7 @@ export default function AddProductPage() {
     category: '',
     brand: '',
     stock: '',
-    imageUrl: 'https://placehold.co/600x400.png', // Default placeholder
+    imageUrl: 'https://placehold.co/600x400.png',
     featured: false,
     rating: '',
   });
@@ -63,7 +63,6 @@ export default function AddProductPage() {
     e.preventDefault();
     setIsLoading(true);
 
-    // Basic validation (can be expanded with Zod or similar)
     if (!formData.name || !formData.price || !formData.category || !formData.brand || !formData.stock) {
         toast({ title: "Missing Fields", description: "Please fill in all required fields.", variant: "destructive" });
         setIsLoading(false);
@@ -71,23 +70,28 @@ export default function AddProductPage() {
     }
 
     try {
-      // In a real app, you would send this data to your backend API
-      console.log('Submitting new product:', {
-        ...formData,
+      const productsCollectionRef = collection(db, 'products');
+      await addDoc(productsCollectionRef, {
+        name: formData.name,
+        description: formData.description,
         price: parseFloat(formData.price),
+        category: formData.category,
+        brand: formData.brand,
         stock: parseInt(formData.stock, 10),
-        rating: formData.rating ? parseFloat(formData.rating) : undefined,
+        imageUrl: formData.imageUrl,
+        featured: formData.featured,
+        rating: formData.rating ? parseFloat(formData.rating) : null, // Store as number or null
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       });
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
 
       toast({
         title: "Product Added",
-        description: `${formData.name} has been successfully added. (Demo - not persistent)`,
+        description: `${formData.name} has been successfully added to Firestore.`,
       });
-      router.push('/admin/products'); // Redirect to products list
+      router.push('/admin/products');
     } catch (error) {
-      console.error("Error adding product:", error);
+      console.error("Error adding product to Firestore:", error);
       toast({
         title: "Error Adding Product",
         description: "An unexpected error occurred. Please try again.",
@@ -152,7 +156,7 @@ export default function AddProductPage() {
             </div>
              <div className="space-y-2">
               <Label htmlFor="imageUrl">Image URL</Label>
-              <Input id="imageUrl" name="imageUrl" value={formData.imageUrl} onChange={handleChange} disabled={isLoading} />
+              <Input id="imageUrl" name="imageUrl" value={formData.imageUrl} onChange={handleChange} disabled={isLoading} placeholder="https://placehold.co/600x400.png"/>
             </div>
              <div className="space-y-2">
               <Label htmlFor="rating">Rating (Optional, 1-5)</Label>

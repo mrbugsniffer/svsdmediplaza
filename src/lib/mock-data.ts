@@ -1,109 +1,92 @@
+
 import type { Product, Order } from '@/types';
+import { db } from '@/lib/firebase';
+import { doc, getDoc, collection, getDocs, query, where, limit } from 'firebase/firestore';
 
+// mockProducts array is now obsolete as products are fetched from Firestore.
+// You can remove it or keep it commented for reference.
+/*
 export const mockProducts: Product[] = [
-  {
-    id: 'prod-001',
-    name: 'Instant Pain Relief Tablets',
-    description: 'Fast-acting tablets for effective relief from headaches, muscle pain, and fever. Contains 500mg Paracetamol.',
-    price: 5.99,
-    imageUrl: 'https://placehold.co/600x400.png',
-    category: 'Pain Relief',
-    brand: 'PharmaWell',
-    featured: true,
-    stock: 150,
-    rating: 4.5,
-  },
-  {
-    id: 'prod-002',
-    name: 'Vitamin C Boost Gummies',
-    description: 'Delicious orange-flavored gummies packed with Vitamin C to support your immune system. 60 gummies per bottle.',
-    price: 12.49,
-    imageUrl: 'https://placehold.co/600x400.png',
-    category: 'Vitamins & Supplements',
-    brand: 'NutriBoost',
-    featured: true,
-    stock: 200,
-    rating: 4.8,
-  },
-  {
-    id: 'prod-003',
-    name: 'Sensitive Skin Moisturizer',
-    description: 'A gentle, hydrating moisturizer formulated for sensitive skin. Fragrance-free and dermatologically tested.',
-    price: 18.75,
-    imageUrl: 'https://placehold.co/600x400.png',
-    category: 'Skin Care',
-    brand: 'DermaCare',
-    stock: 80,
-    rating: 4.2,
-  },
-  {
-    id: 'prod-004',
-    name: 'Cold & Flu Night Syrup',
-    description: 'Effective relief from cold and flu symptoms for a restful night. Non-drowsy formula for daytime also available.',
-    price: 9.99,
-    imageUrl: 'https://placehold.co/600x400.png',
-    category: 'Cold & Flu',
-    brand: 'HealFast',
-    stock: 120,
-    rating: 4.0,
-  },
-  {
-    id: 'prod-005',
-    name: 'Multivitamin Daily Capsules',
-    description: 'A comprehensive daily multivitamin to support overall health and well-being. Contains essential vitamins and minerals.',
-    price: 22.00,
-    imageUrl: 'https://placehold.co/600x400.png',
-    category: 'Vitamins & Supplements',
-    brand: 'NutriBoost',
-    featured: true,
-    stock: 90,
-    rating: 4.6,
-  },
-  {
-    id: 'prod-006',
-    name: 'Advanced Eye Care Drops',
-    description: 'Soothing eye drops for dry, irritated eyes. Provides long-lasting comfort and lubrication.',
-    price: 7.25,
-    imageUrl: 'https://placehold.co/600x400.png',
-    category: 'Eye Care',
-    brand: 'PharmaWell',
-    stock: 75,
-    rating: 4.3,
-  },
-  {
-    id: 'prod-007',
-    name: 'Children\'s Cough Syrup',
-    description: 'Gentle and effective cough relief for children aged 2+. Cherry flavored and alcohol-free.',
-    price: 6.50,
-    imageUrl: 'https://placehold.co/600x400.png',
-    category: 'Cold & Flu',
-    brand: 'HealFast',
-    stock: 110,
-  },
-  {
-    id: 'prod-008',
-    name: 'SPF 50 Sunscreen Lotion',
-    description: 'Broad-spectrum SPF 50 sunscreen for all skin types. Water-resistant and non-greasy formula.',
-    price: 15.99,
-    imageUrl: 'https://placehold.co/600x400.png',
-    category: 'Skin Care',
-    brand: 'DermaCare',
-    stock: 60,
-    rating: 4.7,
-  },
+  // ... original mock products data
 ];
+*/
 
-export const mockCategories: string[] = Array.from(new Set(mockProducts.map(p => p.category)));
-export const mockBrands: string[] = Array.from(new Set(mockProducts.map(p => p.brand)));
+export const mockCategories: string[] = [
+    "Pain Relief", 
+    "Vitamins & Supplements", 
+    "Skin Care", 
+    "Cold & Flu", 
+    "Eye Care", 
+    "Baby Care", 
+    "Personal Care", 
+    "Dental Care",
+    "First Aid"
+]; // Keep for filter dropdowns, or make dynamic later
 
+export const mockBrands: string[] = [
+    "PharmaWell", 
+    "NutriBoost", 
+    "DermaCare", 
+    "HealFast", 
+    "MediChoice", 
+    "HealthPlus",
+    "OralFresh"
+]; // Keep for filter dropdowns, or make dynamic later
+
+
+// --- Functions to fetch from Firestore ---
+
+// Get a single product by ID from Firestore
+export const getProductByIdFs = async (id: string): Promise<Product | undefined> => {
+  try {
+    const productDocRef = doc(db, 'products', id);
+    const productSnap = await getDoc(productDocRef);
+    if (productSnap.exists()) {
+      return { id: productSnap.id, ...productSnap.data() } as Product;
+    }
+    return undefined;
+  } catch (error) {
+    console.error("Error fetching product by ID from Firestore:", error);
+    return undefined;
+  }
+};
+
+// Get all products from Firestore
+export const getAllProductsFs = async (): Promise<Product[]> => {
+  try {
+    const productsCollectionRef = collection(db, 'products');
+    const productsSnap = await getDocs(productsCollectionRef);
+    return productsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+  } catch (error) {
+    console.error("Error fetching all products from Firestore:", error);
+    return [];
+  }
+};
+
+// Get featured products from Firestore
+export const getFeaturedProductsFs = async (count: number = 4): Promise<Product[]> => {
+  try {
+    const productsCollectionRef = collection(db, 'products');
+    const q = query(productsCollectionRef, where('featured', '==', true), limit(count));
+    const productsSnap = await getDocs(q);
+    return productsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+  } catch (error) {
+    console.error("Error fetching featured products from Firestore:", error);
+    return [];
+  }
+};
+
+
+// Mock orders can remain as they are not part of this update's scope
 export const mockOrders: Order[] = [
   {
     id: 'order-12345',
     items: [
-      { ...mockProducts[0], quantity: 1 },
-      { ...mockProducts[2], quantity: 2 },
+      // Replace with dynamic product data structure if needed, or keep as placeholder for now
+      { id: 'prod-001', name: 'Instant Pain Relief Tablets', price: 5.99, quantity: 1, imageUrl: 'https://placehold.co/600x400.png', category: 'Pain Relief', brand: 'PharmaWell', stock: 100 },
+      { id: 'prod-003', name: 'Sensitive Skin Moisturizer', price: 18.75, quantity: 2, imageUrl: 'https://placehold.co/600x400.png', category: 'Skin Care', brand: 'DermaCare', stock: 50 },
     ],
-    totalAmount: (mockProducts[0].price * 1) + (mockProducts[2].price * 2),
+    totalAmount: (5.99 * 1) + (18.75 * 2),
     orderDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days ago
     status: 'Shipped',
     shippingAddress: {
@@ -115,29 +98,11 @@ export const mockOrders: Order[] = [
     },
     customerEmail: 'jane.doe@example.com',
   },
-  {
-    id: 'order-67890',
-    items: [
-      { ...mockProducts[1], quantity: 1 },
-    ],
-    totalAmount: mockProducts[1].price * 1,
-    orderDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-    status: 'Processing',
-    shippingAddress: {
-      fullName: 'John Smith',
-      address: '456 Oak Ave',
-      city: 'Otherville',
-      postalCode: '67890',
-      country: 'USA',
-    },
-    customerEmail: 'john.smith@example.com',
-  },
+  // ... other mock orders
 ];
 
-export const getProductById = async (id: string): Promise<Product | undefined> => {
-  return mockProducts.find(p => p.id === id);
-};
-
+// This function might need to be updated if orders depend on product details from Firestore
 export const getOrderById = async (id: string): Promise<Order | undefined> => {
+  // For now, it continues to use mockOrders
   return mockOrders.find(o => o.id === id);
 };
