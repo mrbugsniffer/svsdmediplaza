@@ -1,7 +1,8 @@
+
 'use client';
 
 import Link from 'next/link';
-import { MapPin, ChevronDown, Percent, ShoppingCart, UserCircle2, Menu, Search } from 'lucide-react';
+import { MapPin, ChevronDown, Percent, ShoppingCart, LogIn, UserPlus, Menu, Search } from 'lucide-react'; // Added LogIn, UserPlus
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useCart } from '@/hooks/use-cart';
@@ -21,7 +22,7 @@ const mainNavLinks = [
   { href: '#', label: 'Find Doctors' },
   { href: '#', label: 'Lab Tests' },
   { href: '#', label: 'Circle Membership' },
-  { href: '/track-order', label: 'Health Records' }, // Existing page, re-purposed label
+  { href: '/track-order', label: 'Health Records' },
   { href: '#', label: 'Credit Card', new: true },
   { href: '#', label: 'Buy Insurance', new: true },
 ];
@@ -50,9 +51,15 @@ export function Navbar() {
           )}
         </Link>
       </Button>
-      <Button variant="outline" asChild className="text-xs sm:text-sm px-2 sm:px-3 text-foreground hover:text-primary hover:border-primary">
-        <Link href="#">
-          <UserCircle2 size={isMobile ? 18 : 20} className="mr-1" /> Login
+      <Button variant="ghost" asChild className="text-xs sm:text-sm px-2 sm:px-3 text-foreground hover:text-primary">
+        <Link href="/login">
+          <LogIn size={isMobile ? 18 : 20} className="mr-1" /> Login
+        </Link>
+      </Button>
+      <Button variant="default" asChild className="text-xs sm:text-sm px-2 sm:px-3 bg-accent hover:bg-accent/90 text-accent-foreground">
+        <Link href="/signup">
+          <UserPlus size={isMobile ? 16 : 18} className="mr-1 sm:mr-1.5" /> {/* Adjusted icon size and margin for mobile */}
+          Sign Up
         </Link>
       </Button>
     </>
@@ -115,7 +122,9 @@ export function Navbar() {
                     </div>
                     {mainNavigationLinks}
                     <hr className="my-3"/>
-                    {userActions}
+                    <div className="flex flex-col space-y-2"> {/* Ensure buttons stack nicely */}
+                      {userActions}
+                    </div>
                   </nav>
                 </SheetContent>
               </Sheet>
