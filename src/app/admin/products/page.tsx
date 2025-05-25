@@ -85,7 +85,7 @@ export default function AdminProductsPage() {
   };
 
   return (
-    <div className="flex flex-col h-full space-y-6">
+    <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
             <h1 className="text-3xl font-bold text-foreground">Manage Products</h1>
@@ -98,14 +98,14 @@ export default function AdminProductsPage() {
         </Button>
       </div>
 
-       <Card className="shadow-md flex flex-col flex-1">
+       <Card className="shadow-md">
         <CardHeader>
             <CardTitle>Product List</CardTitle>
             <CardDescription>
                 Search and manage your existing products. Total: {filteredProducts.length} products.
             </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col flex-1 overflow-hidden">
+        <CardContent>
             <div className="mb-4 relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -116,9 +116,9 @@ export default function AdminProductsPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 />
             </div>
-            <div className="overflow-auto flex-1">
+            <div className="overflow-auto">
                 {isLoading ? (
-                    <div className="flex justify-center items-center py-10 h-full">
+                    <div className="flex justify-center items-center py-10">
                         <Package size={32} className="animate-pulse mr-2" />
                         <p>Loading products...</p>
                     </div>
@@ -210,4 +210,3 @@ export default function AdminProductsPage() {
     </div>
   );
 }
-
