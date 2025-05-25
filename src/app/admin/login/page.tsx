@@ -7,8 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { LogIn, ShieldCheck } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
+import { auth } from '@/lib/firebase'; // Import Firebase auth
+import { signInWithEmailAndPassword } from 'firebase/auth'; // Import signInWithEmailAndPassword
 
 const ADMIN_AUTH_KEY = 'svsdmediplaza_admin_auth';
 
@@ -20,8 +22,11 @@ export default function AdminLoginPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    // Check if admin is already "logged in"
+    // Check if admin is already "logged in" via localStorage
     if (localStorage.getItem(ADMIN_AUTH_KEY) === 'true') {
+      // Optionally, you could also check Firebase auth state here if needed
+      // For instance, if Firebase auth state is lost but localStorage persists.
+      // However, the AdminLayout primarily relies on localStorage for route protection.
       router.replace('/admin/dashboard');
     }
   }, [router]);
@@ -30,23 +35,64 @@ export default function AdminLoginPage() {
     e.preventDefault();
     setIsLoading(true);
 
-    // --- IMPORTANT: This is NOT secure authentication ---
-    // --- For demonstration purposes only. Use a real auth system for production. ---
+    // --- IMPORTANT: This is NOT fully secure authentication for a real production admin portal ---
+    // This section demonstrates a basic check and Firebase sign-in.
+    // For production, a robust backend authentication with role management is essential.
+
     if (email === 'admin@gmail.com' && password === 'password') {
-      localStorage.setItem(ADMIN_AUTH_KEY, 'true');
-      toast({
-        title: "Admin Login Successful",
-        description: "Welcome to the Admin Portal.",
-      });
-      router.push('/admin/dashboard');
+      try {
+        // Attempt to sign in the admin user with Firebase as well
+        // This is useful if Firestore rules check request.auth != null
+        await signInWithEmailAndPassword(auth, email, password);
+        
+        // If Firebase sign-in is successful, set the local flag
+        localStorage.setItem(ADMIN_AUTH_KEY, 'true');
+        
+        toast({
+          title: "Admin Login Successful",
+          description: "Welcome to the Admin Portal. Firebase sign-in also succeeded.",
+        });
+        router.push('/admin/dashboard');
+
+      } catch (firebaseError: any) {
+        // Handle Firebase sign-in errors
+        console.error("Admin Firebase sign-in error:", firebaseError);
+        // Even if Firebase sign-in fails (e.g., user not found in Firebase Auth, wrong Firebase password),
+        // we might still allow access to the admin UI based on hardcoded credentials for demo purposes,
+        // but show a more specific error. Or, you could choose to block access entirely.
+        // For this example, we'll show an error but still proceed if hardcoded check passed.
+        // This decision depends on how strictly you want to tie the demo admin to Firebase Auth.
+
+        // For now, let's assume if hardcoded check passes, local storage is set.
+        // But we should definitely inform about the Firebase auth issue.
+        localStorage.setItem(ADMIN_AUTH_KEY, 'true'); // Still setting for UI demo
+        toast({
+          title: "Admin Login (Partial)",
+          description: "Demo access granted. However, Firebase sign-in failed: " + firebaseError.message,
+          variant: "destructive",
+          duration: 7000,
+        });
+        // Decide if you want to redirect or not if Firebase auth fails.
+        // For this demo, we'll redirect, as the UI protection relies on localStorage.
+         router.push('/admin/dashboard');
+
+        // If you want to block access if Firebase Auth fails for the admin:
+        // toast({
+        //   title: "Admin Login Failed",
+        //   description: "Firebase authentication for admin failed: " + firebaseError.message,
+        //   variant: "destructive",
+        // });
+        // setIsLoading(false);
+        // return;
+      }
     } else {
       toast({
         title: "Admin Login Failed",
-        description: "Invalid credentials. This is a demo, try 'admin@gmail.com' and 'password'.",
+        description: "Invalid local credentials. This is a demo, try 'admin@gmail.com' and 'password'.",
         variant: "destructive",
       });
     }
-    // --- End of insecure demo authentication ---
+    // --- End of modified demo authentication ---
     setIsLoading(false);
   };
 
