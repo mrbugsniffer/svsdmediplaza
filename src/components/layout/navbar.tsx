@@ -23,7 +23,7 @@ import {
 const SvsdMediPlazaLogo = () => (
   <svg width="30" height="30" viewBox="0 0 100 100" fill="hsl(var(--primary))" xmlns="http://www.w3.org/2000/svg">
     {/* Simple "S" shape */}
-    <path d="M68.3,20.3c-5.9-4.5-13.2-7.1-21-7.1c-12.5,0-23.8,6.3-30.4,15.9l-0.1,0.1C10.7,36.8,7,44.9,7,53.8c0,9.1,3.9,17.3,10.2,23.1c6.6,6,15.3,9.5,24.8,9.5c7.8,0,15.1-2.6,21-7.1c6.1-4.7,10.4-11.3,12.4-18.9h-20c-2.2,0-4-1.8-4-4s1.8-4,4-4h23.8c0.4-2.6,0.6-5.2,0.6-7.8c0-8.1-2.9-15.5-7.8-21.4C71.7,21.9,70,21,68.3,20.3z M54.8,68.4c-3.6,2.8-8,4.4-12.8,4.4c-7.2,0-13.6-3.4-17.7-8.6c-4.4-5.2-6.7-11.6-6.7-18.4c0-6.6,2.2-12.8,6.4-17.9l0.1-0.1c4.1-5.2,9.9-8.5,16.4-8.5c4.8,0,9.2,1.7,12.8,4.4c3.6,2.8,6.2,6.6,7.5,10.9H48.8c-2.2,0-4-1.8-4-4s1.8-4,4-4h17.1C64.4,63.6,60.1,66.9,54.8,68.4z"/>
+    <path d="M68.3,20.3c-5.9-4.5-13.2-7.1-21-7.1c-12.5,0-23.8,6.3-30.4,15.9l-0.1,0.1C10.7,36.8,7,44.9,7,53.8 c0,9.1,3.9,17.3,10.2,23.1c6.6,6,15.3,9.5,24.8,9.5c7.8,0,15.1-2.6,21-7.1c6.1-4.7,10.4-11.3,12.4-18.9h-20 c-2.2,0-4-1.8-4-4s1.8-4,4-4h23.8c0.4-2.6,0.6-5.2,0.6-7.8c0-8.1-2.9-15.5-7.8-21.4C71.7,21.9,70,21,68.3,20.3z M54.8,68.4 c-3.6,2.8-8,4.4-12.8,4.4c-7.2,0-13.6-3.4-17.7-8.6c-4.4-5.2-6.7-11.6-6.7-18.4c0-6.6,2.2-12.8,6.4-17.9l0.1-0.1 c4.1-5.2,9.9-8.5,16.4-8.5c4.8,0,9.2,1.7,12.8,4.4c3.6,2.8,6.2,6.6,7.5,10.9H48.8c-2.2,0-4-1.8-4-4s1.8-4,4-4h17.1 C64.4,63.6,60.1,66.9,54.8,68.4z"/>
   </svg>
 );
 
@@ -35,6 +35,8 @@ const mainNavLinks = [
   { href: '/track-order', label: 'Health Records' },
   { href: '#', label: 'Offers', new: true },
   { href: '#', label: 'Wellness', new: true },
+  { href: '/about', label: 'About Us' },
+  { href: '/contact', label: 'Contact Us' },
 ];
 
 export function Navbar() {
@@ -69,11 +71,11 @@ export function Navbar() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="text-xs sm:text-sm px-2 sm:px-3 text-foreground hover:text-primary">
               <UserCircle size={isMobile ? 18 : 20} className="mr-1" />
-              <span className="hidden sm:inline truncate max-w-[100px]">{user.email}</span>
+              <span className="hidden sm:inline truncate max-w-[100px]">{user.displayName || user.email}</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuLabel>{user.displayName || user.email}</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
               <Link href="/profile">Profile</Link>
@@ -123,7 +125,7 @@ export function Navbar() {
       ) : user ? (
         <>
           <Button variant="ghost" asChild className="w-full justify-start">
-            <Link href="/profile"><UserCircle size={18} className="mr-2" /> Profile</Link>
+            <Link href="/profile"><UserCircle size={18} className="mr-2" /> Profile ({user.displayName || user.email})</Link>
           </Button>
            <Button variant="ghost" asChild className="w-full justify-start">
             <Link href="/track-order"><ShoppingCart size={18} className="mr-2" /> My Orders</Link>
