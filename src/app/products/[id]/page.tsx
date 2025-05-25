@@ -1,7 +1,7 @@
 
 'use client';
 
-import { use, useEffect, useState } from 'react'; // Added 'use'
+import { use, useEffect, useState } from 'react';
 import Image from 'next/image';
 import type { Product } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -14,10 +14,11 @@ import { ProductCard } from '@/components/products/product-card';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, collection, query, where, limit, getDocs, DocumentData, QuerySnapshot } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, limit, getDocs } from 'firebase/firestore';
 
 export default function ProductDetailPage({ params: paramsAsPromise }: { params: { id: string } }) {
-  const params = use(paramsAsPromise); // Unwrap the params
+  const resolvedParams = use(paramsAsPromise as any) as { id: string | undefined };
+  const productId = resolvedParams?.id;
 
   const [product, setProduct] = useState<Product | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
@@ -27,59 +28,47 @@ export default function ProductDetailPage({ params: paramsAsPromise }: { params:
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchProduct = async () => {
-      if (!params.id) { // Use unwrapped params.id
+    const fetchProductDetails = async () => {
+      if (!productId) {
         setIsLoading(false);
         return;
       }
       setIsLoading(true);
       try {
-        const productDocRef = doc(db, 'products', params.id); // Use unwrapped params.id
+        const productDocRef = doc(db, 'products', productId);
         const productSnap = await getDoc(productDocRef);
 
         if (productSnap.exists()) {
           const fetchedProductData = { id: productSnap.id, ...productSnap.data() } as Product;
           setProduct(fetchedProductData);
 
-          // Fetch related products
           if (fetchedProductData.category) {
             const productsCollectionRef = collection(db, 'products');
             const relatedQuery = query(
               productsCollectionRef,
               where('category', '==', fetchedProductData.category),
-              where('id', '!=', fetchedProductData.id), // Use unwrapped params.id (already done correctly as it's fetchedProductData.id)
+              where('id', '!=', fetchedProductData.id),
               limit(4)
             );
             const relatedSnap = await getDocs(relatedQuery);
-            const related = relatedSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+            const related = relatedSnap.docs.map(docData => ({ id: docData.id, ...docData.data() } as Product));
             setRelatedProducts(related);
           }
         } else {
           toast({ title: "Not Found", description: "Product not found.", variant: "destructive" });
+          setProduct(null);
         }
       } catch (error) {
         console.error("Error fetching product:", error);
         toast({ title: "Error", description: "Failed to load product details.", variant: "destructive" });
+        setProduct(null);
       } finally {
         setIsLoading(false);
       }
     };
-    
-    // Ensure params and params.id are available before fetching
-    if (params && params.id) {
-      fetchProduct();
-    } else {
-      // If params or params.id is not available after `use(paramsAsPromise)`
-      // (which should suspend if paramsAsPromise is a promise and not resolve to a usable state),
-      // then we might be in an unexpected state or the promise resolved to something without an id.
-      // For now, align with original logic of not fetching if id is missing.
-      setIsLoading(false);
-      if(!params || !params.id) { // Add an explicit check if params itself or id is null/undefined post `use`
-          // This case might indicate an issue with routing or how params are provided
-          toast({ title: "Error", description: "Product ID not available for fetching.", variant: "destructive" });
-      }
-    }
-  }, [params, toast]); // Depend on the resolved params object (or params.id if more specific)
+
+    fetchProductDetails();
+  }, [productId, toast]);
 
   if (isLoading) {
     return (
@@ -154,7 +143,7 @@ export default function ProductDetailPage({ params: paramsAsPromise }: { params:
                   {[...Array(Math.floor(product.rating))].map((_, i) => (
                     <Star key={i} size={20} fill="currentColor" />
                   ))}
-                  {product.rating % 1 !== 0 && <Star size={20} />} 
+                  {product.rating % 1 !== 0 && <Star size={20} />}
                   {[...Array(5 - Math.ceil(product.rating))].map((_, i) => (
                     <Star key={`empty-${i}`} size={20} className="text-muted-foreground opacity-50" />
                   ))}
@@ -194,7 +183,7 @@ export default function ProductDetailPage({ params: paramsAsPromise }: { params:
           </div>
         </div>
       </Card>
-      
+
       <Separator className="my-12" />
 
       {relatedProducts.length > 0 && (
@@ -210,3 +199,5 @@ export default function ProductDetailPage({ params: paramsAsPromise }: { params:
     </div>
   );
 }
+
+    
