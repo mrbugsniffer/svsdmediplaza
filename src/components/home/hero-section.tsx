@@ -17,7 +17,7 @@ export function HeroSection() {
               src="https://img.freepik.com/premium-vector/cartoon-doctor-patient-discussing-proper-medication-usage-with-speech-bubbles-showing-key_216520-75982.jpg" 
               alt="Healthcare professionals discussing medication" 
               width={250} 
-              height={200} 
+              height={250} 
               className="opacity-80 object-cover rounded"
               data-ai-hint="doctor patient"
             />
