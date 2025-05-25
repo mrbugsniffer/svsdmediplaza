@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { SidebarProvider, Sidebar, SidebarTrigger, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter } from '@/components/ui/sidebar';
 import { LayoutDashboard, Package, LogOut, Settings, Users, ShoppingCart, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Toaster } from "@/components/ui/toaster"; 
+import { Toaster } from "@/components/ui/toaster";
 import { Geist, Geist_Mono } from 'next/font/google';
 
 const geistSans = Geist({
