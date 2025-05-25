@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { Navbar } from '@/components/layout/navbar';
+import { SecondaryNavbar } from '@/components/layout/secondary-navbar';
 import { Footer } from '@/components/layout/footer';
 import { CartProvider } from '@/context/cart-context';
 import { Toaster } from "@/components/ui/toaster";
@@ -17,8 +18,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'PharmaFlow',
-  description: 'Your trusted online pharmacy.',
+  title: 'Apollo Pharmacy - Your Health Partner',
+  description: 'Online pharmacy for all your healthcare needs. Buy medicines, book lab tests, and consult doctors online.',
 };
 
 export default function RootLayout({
@@ -31,6 +32,7 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}>
         <CartProvider>
           <Navbar />
+          <SecondaryNavbar />
           <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
             {children}
           </main>
