@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -5,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 
 const secondaryNavLinks = [
-  { href: '/products', label: 'Apollo Products' }, // Existing products page
+  { href: '/products', label: 'All Products' }, // Existing products page
   { href: '#', label: 'Baby Care' },
   { href: '#', label: 'Nutritional Drinks & Supplements' },
   { href: '#', label: 'Women Care' },
@@ -39,3 +40,4 @@ export function SecondaryNavbar() {
     </nav>
   );
 }
+
