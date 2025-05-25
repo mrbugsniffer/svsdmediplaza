@@ -7,7 +7,7 @@ import { Search } from 'lucide-react';
 export function HeroSection() {
   return (
     <section
-      className="relative py-16 md:py-24 rounded-xl shadow-lg overflow-hidden bg-gradient-to-br from-accent/70 via-muted/50 to-background"
+      className="relative py-10 md:py-16 rounded-xl shadow-lg overflow-hidden bg-gradient-to-br from-accent/70 via-muted/50 to-background"
       data-ai-hint="modern abstract background"
     >
       <div className="container mx-auto px-4 relative z-10">
