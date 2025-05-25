@@ -30,48 +30,48 @@ export function ProductCard({ product }: ProductCardProps) {
     <Card className="flex flex-col overflow-hidden h-full shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-lg">
       <CardHeader className="p-0">
         <Link href={`/products/${product.id}`} className="block group">
-          <div className="aspect-[4/3] relative w-full overflow-hidden">
+          <div className="aspect-square relative w-full overflow-hidden"> {/* Changed aspect ratio */}
             <Image
               src={product.imageUrl}
               alt={product.name}
               fill
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
               className="object-cover group-hover:scale-105 transition-transform duration-300"
-              data-ai-hint={`${product.category.toLowerCase()} ${product.brand.toLowerCase()}`}
+              data-ai-hint={`${product.category ? product.category.toLowerCase() : 'product'} ${product.brand ? product.brand.toLowerCase() : ''}`}
             />
           </div>
         </Link>
       </CardHeader>
-      <CardContent className="p-3 flex-grow flex flex-col"> {/* Reduced padding */}
+      <CardContent className="p-2 flex-grow flex flex-col"> {/* Reduced padding */}
         <Link href={`/products/${product.id}`} className="block">
-          <CardTitle className="text-base font-semibold mb-1 hover:text-primary transition-colors">{product.name}</CardTitle> {/* Reduced font size */}
+          <CardTitle className="text-sm font-semibold mb-0.5 hover:text-primary transition-colors line-clamp-1">{product.name}</CardTitle> {/* Reduced font size, margin, added line-clamp */}
         </Link>
-        <CardDescription className="text-xs text-muted-foreground mb-1.5 line-clamp-2">{product.description}</CardDescription> {/* Reduced font size and margin */}
-        <div className="text-xs text-muted-foreground mb-1.5"> {/* Reduced margin */}
+        <CardDescription className="text-[11px] text-muted-foreground mb-1 line-clamp-1">{product.description || 'No description available.'}</CardDescription> {/* Reduced font size, margin, line-clamp, added fallback */}
+        <div className="text-[10px] text-muted-foreground mb-0.5"> {/* Reduced font size and margin */}
           <span className="font-medium text-foreground">{product.brand}</span> - <span>{product.category}</span>
         </div>
         {product.rating && (
-          <div className="flex items-center gap-0.5 text-amber-500 mb-1.5"> {/* Reduced gap and margin */}
+          <div className="flex items-center gap-0.5 text-amber-500 mb-0.5"> {/* Reduced gap and margin */}
             {[...Array(Math.floor(product.rating))].map((_, i) => (
-              <Star key={i} size={14} fill="currentColor" /> /* Reduced icon size */
+              <Star key={i} size={12} fill="currentColor" /> {/* Reduced icon size */}
             ))}
-            {product.rating % 1 !== 0 && <Star size={14} />} /* Reduced icon size */
+            {product.rating % 1 !== 0 && <Star size={12} />} {/* Reduced icon size */}
             {[...Array(5 - Math.ceil(product.rating))].map((_, i) => (
-              <Star key={`empty-${i}`} size={14} className="text-muted-foreground opacity-50" /> /* Reduced icon size */
+              <Star key={`empty-${i}`} size={12} className="text-muted-foreground opacity-50" /> {/* Reduced icon size */}
             ))}
-            <span className="text-xs text-muted-foreground ml-1">({product.rating.toFixed(1)})</span>
+            <span className="text-[10px] text-muted-foreground ml-1">({product.rating.toFixed(1)})</span> {/* Reduced font size */}
           </div>
         )}
-        <p className="text-lg font-bold text-primary mt-auto pt-1.5">${product.price.toFixed(2)}</p> {/* Reduced font size and padding-top */}
+        <p className="text-base font-semibold text-primary mt-auto pt-1">${product.price ? product.price.toFixed(2) : '0.00'}</p> {/* Reduced font size, padding-top, added price fallback */}
       </CardContent>
-      <CardFooter className="p-3 border-t"> {/* Reduced padding */}
+      <CardFooter className="p-2 border-t"> {/* Reduced padding */}
         <Button 
           onClick={handleAddToCart} 
-          size="sm" /* Reduced button size */
-          className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" 
+          size="sm" 
+          className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-xs"  // Added text-xs for button
           disabled={product.stock === 0}
         >
-          <ShoppingCart size={16} className="mr-1.5" /> {/* Reduced icon size and margin */}
+          <ShoppingCart size={14} className="mr-1" /> {/* Reduced icon size and margin */}
           {product.stock > 0 ? 'Add to Cart' : 'Out of Stock'}
         </Button>
       </CardFooter>

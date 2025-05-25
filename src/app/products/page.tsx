@@ -119,9 +119,9 @@ export default function ProductsPage() {
         </div>
         <div className="w-full lg:w-3/4">
           <div className="h-10 bg-muted rounded w-1/3 mb-4 animate-pulse"></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="bg-card rounded-xl shadow-lg p-4 animate-pulse h-80"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {[...Array(8)].map((_, i) => ( // Increased placeholder count for 4 columns
+              <div key={i} className="bg-card rounded-xl shadow-lg p-4 animate-pulse h-72"></div> // Reduced placeholder height
             ))}
           </div>
         </div>
@@ -203,7 +203,7 @@ export default function ProductsPage() {
                 <p className="text-xl text-muted-foreground">Loading products...</p>
             </div>
           ) : filteredProducts.length > 0 ? (
-            <div className={`grid gap-4 ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-3' : 'grid-cols-1'}`}>
+            <div className={`grid gap-4 ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4' : 'grid-cols-1'}`}> {/* Updated grid columns */}
               {filteredProducts.map(product => (
                 <ProductCard key={product.id} product={product} />
               ))}
@@ -221,3 +221,4 @@ export default function ProductsPage() {
     </div>
   );
 }
+
