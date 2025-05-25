@@ -1,24 +1,69 @@
 
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { UserCircle, Mail, KeyRound, MailCheck, CalendarPlus, CalendarClock, ShieldAlert } from 'lucide-react';
+import { UserCircle, Mail, KeyRound, MailCheck, CalendarPlus, CalendarClock, ShieldAlert, MailQuestion } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
+import { auth } from '@/lib/firebase'; // Import auth directly
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function ProfilePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
+  const [isSendingResetEmail, setIsSendingResetEmail] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
       router.push('/login?redirect=/profile'); // Redirect to login if not authenticated
     }
   }, [user, loading, router]);
+
+  const handleSendPasswordReset = async () => {
+    if (!user || !user.email) {
+      toast({
+        title: "Error",
+        description: "User email not found. Cannot send reset email.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setIsSendingResetEmail(true);
+    try {
+      await sendPasswordResetEmail(auth, user.email);
+      toast({
+        title: "Password Reset Email Sent",
+        description: `A password reset link has been sent to ${user.email}. Please check your inbox.`,
+      });
+    } catch (error: any) {
+      console.error("Password reset error:", error);
+      toast({
+        title: "Error Sending Reset Email",
+        description: error.message || "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSendingResetEmail(false);
+    }
+  };
+
 
   if (loading) {
     return (
@@ -33,7 +78,6 @@ export default function ProfilePage() {
   }
 
   if (!user) {
-    // This state should ideally be brief due to the redirect, but serves as a fallback.
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center">
         <UserCircle size={64} className="text-muted-foreground mb-6" />
@@ -79,6 +123,9 @@ export default function ProfilePage() {
               value={
                 <span className={user.emailVerified ? 'text-green-600' : 'text-amber-600'}>
                   {user.emailVerified ? 'Yes' : 'No'}
+                  {!user.emailVerified && (
+                    <span className="text-xs ml-2">(Verification email can be sent if needed)</span>
+                  )}
                 </span>
               } 
             />
@@ -91,8 +138,36 @@ export default function ProfilePage() {
             <h3 className="text-lg font-semibold text-foreground mb-3">Account Actions</h3>
             <div className="flex flex-col sm:flex-row gap-3">
                 <Button variant="outline" disabled>Edit Profile (Coming Soon)</Button>
-                <Button variant="outline" disabled>Change Password (Coming Soon)</Button>
+                
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" disabled={isSendingResetEmail}>
+                      <MailQuestion size={16} className="mr-2" /> 
+                      {isSendingResetEmail ? 'Sending Email...' : 'Send Password Reset Email'}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Confirm Password Reset</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to send a password reset email to {user.email}? 
+                        You will be able to set a new password by following the link in the email.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleSendPasswordReset} disabled={isSendingResetEmail} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                        {isSendingResetEmail ? 'Processing...' : 'Send Email'}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
             </div>
+            {!user.emailVerified && (
+              <p className="text-xs text-muted-foreground mt-3">
+                To change your password or manage other sensitive account settings, your email address must be verified first.
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
