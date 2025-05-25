@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, use } from 'react'; // Import 'use'
+import { useState, useEffect, use } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,13 +11,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { mockCategories, mockBrands } from '@/lib/mock-data'; // Using mock data for dropdowns for now
+import { mockCategories, mockBrands } from '@/lib/mock-data';
 import Link from 'next/link';
-import { ChevronLeft, Package } from 'lucide-react';
+import { ChevronLeft, Package, UploadCloud } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import type { Product } from '@/types';
-
+import NextImage from 'next/image'; // Renamed to avoid conflict with local Image component
 
 interface ProductFormData {
   name: string;
@@ -33,8 +33,8 @@ interface ProductFormData {
 
 export default function EditProductPage() {
   const router = useRouter();
-  const paramsPromise = useParams(); // useParams might return a promise-like object
-  const resolvedParams = use(paramsPromise as any) as { id: string }; // Unwrap with React.use()
+  const paramsPromise = useParams(); 
+  const resolvedParams = use(paramsPromise as any) as { id: string }; 
 
   const { toast } = useToast();
   const productId = resolvedParams.id;
@@ -43,6 +43,12 @@ export default function EditProductPage() {
   const [originalProductName, setOriginalProductName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  // Use a separate state for the URL input field to manage its value independently
+  const [manualImageUrlInput, setManualImageUrlInput] = useState<string>('');
+
 
   useEffect(() => {
     if (productId) {
@@ -54,18 +60,34 @@ export default function EditProductPage() {
 
           if (productSnap.exists()) {
             const productData = productSnap.data() as Product;
-            setFormData({
+            const fetchedFormData = {
               name: productData.name,
               description: productData.description,
               price: productData.price.toString(),
               category: productData.category,
               brand: productData.brand,
               stock: productData.stock.toString(),
-              imageUrl: productData.imageUrl,
+              imageUrl: productData.imageUrl || '',
               featured: productData.featured || false,
               rating: productData.rating?.toString() || '',
-            });
+            };
+            setFormData(fetchedFormData);
             setOriginalProductName(productData.name);
+            
+            // Initialize preview and manual URL input based on fetched data
+            if (productData.imageUrl) {
+              if (productData.imageUrl.startsWith('data:image')) {
+                setImagePreviewUrl(productData.imageUrl);
+                setManualImageUrlInput(''); // Don't show data URL in text input
+              } else {
+                setImagePreviewUrl(productData.imageUrl);
+                setManualImageUrlInput(productData.imageUrl);
+              }
+            } else {
+                setImagePreviewUrl(null);
+                setManualImageUrlInput('');
+            }
+
           } else {
             toast({ title: "Error", description: "Product not found.", variant: "destructive" });
             router.push('/admin/products');
@@ -79,14 +101,43 @@ export default function EditProductPage() {
       };
       fetchProduct();
     } else {
-        // Handle case where productId might still be undefined after use(paramsPromise) if params are empty
         toast({ title: "Error", description: "Product ID is missing.", variant: "destructive" });
         router.push('/admin/products');
         setIsLoading(false);
     }
   }, [productId, router, toast]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+
+  // Effect to handle preview logic based on imageFile or manualImageUrlInput
+  useEffect(() => {
+    if (!formData) return; // Ensure formData is loaded
+
+    if (imageFile) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const dataUrl = reader.result as string;
+        setImagePreviewUrl(dataUrl);
+        setFormData(prev => prev ? { ...prev, imageUrl: dataUrl } : null);
+      };
+      reader.readAsDataURL(imageFile);
+    } else if (manualImageUrlInput) {
+        setImagePreviewUrl(manualImageUrlInput);
+        // formData.imageUrl is already updated by handleManualImageUrlInputChange
+    } else if (formData.imageUrl && !formData.imageUrl.startsWith('data:image')) {
+        // This covers the initial load case where imageUrl is a web URL
+        setImagePreviewUrl(formData.imageUrl);
+    } else if (formData.imageUrl && formData.imageUrl.startsWith('data:image') && !imageFile && !manualImageUrlInput) {
+        // This covers the case where a data:image was loaded, and user cleared both file and manual input
+        // We should keep the original data:image as preview in this case, or reset it if form is reset
+        setImagePreviewUrl(formData.imageUrl);
+    } else {
+        setImagePreviewUrl(null); // No file, no manual URL
+    }
+  }, [imageFile, manualImageUrlInput, formData?.imageUrl]); // formData is needed if it changes from elsewhere
+
+
+  const handleFormInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    if (!formData) return;
     const { name, value, type } = e.target;
     if (type === 'checkbox') {
         const { checked } = e.target as HTMLInputElement;
@@ -96,17 +147,49 @@ export default function EditProductPage() {
     }
   };
 
+  const handleManualImageUrlInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!formData) return;
+    const url = e.target.value;
+    setManualImageUrlInput(url); // Update the dedicated state for the URL input field
+    setFormData(prev => prev ? { ...prev, imageUrl: url } : null);
+    if (url) { // If user types a URL, clear any selected file
+      setImageFile(null);
+      // setImagePreviewUrl(url); // Preview is handled by useEffect
+    } else if (!imageFile) { // If URL is cleared and no file, clear preview as well
+      // setImagePreviewUrl(null); // Preview is handled by useEffect
+    }
+  };
+  
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!formData) return;
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file); // This will trigger useEffect to set preview and formData.imageUrl
+      setManualImageUrlInput(''); // Clear manual URL input
+    } else { // File was deselected
+      setImageFile(null);
+      // Fallback to manualImageUrlInput if it has a value, otherwise formData.imageUrl will be empty
+      setFormData(prev => prev ? { ...prev, imageUrl: manualImageUrlInput } : null);
+    }
+  };
+
+
   const handleSelectChange = (name: 'category' | 'brand') => (value: string) => {
     setFormData(prev => prev ? { ...prev, [name]: value } : null);
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!formData || !productId) return; // Ensure productId is available
+    if (!formData || !productId) return; 
     setIsSubmitting(true);
 
     if (!formData.name || !formData.price || !formData.category || !formData.brand || !formData.stock) {
-        toast({ title: "Missing Fields", description: "Please fill in all required fields.", variant: "destructive" });
+        toast({ title: "Missing Fields", description: "Please fill in all required fields (Name, Price, Category, Brand, Stock).", variant: "destructive" });
+        setIsSubmitting(false);
+        return;
+    }
+    if (!formData.imageUrl) {
+        toast({ title: "Missing Image", description: "Please provide an image URL or upload an image.", variant: "destructive" });
         setIsSubmitting(false);
         return;
     }
@@ -114,14 +197,9 @@ export default function EditProductPage() {
     try {
       const productDocRef = doc(db, 'products', productId);
       await updateDoc(productDocRef, {
-        name: formData.name,
-        description: formData.description,
+        ...formData, // spread all fields from formData
         price: parseFloat(formData.price),
-        category: formData.category,
-        brand: formData.brand,
         stock: parseInt(formData.stock, 10),
-        imageUrl: formData.imageUrl,
-        featured: formData.featured,
         rating: formData.rating ? parseFloat(formData.rating) : null,
         updatedAt: serverTimestamp(),
       });
@@ -172,20 +250,20 @@ export default function EditProductPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
              <div className="space-y-2">
               <Label htmlFor="name">Product Name</Label>
-              <Input id="name" name="name" value={formData.name} onChange={handleChange} required disabled={isSubmitting} />
+              <Input id="name" name="name" value={formData.name} onChange={handleFormInputChange} required disabled={isSubmitting} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
-              <Textarea id="description" name="description" value={formData.description} onChange={handleChange} disabled={isSubmitting} />
+              <Textarea id="description" name="description" value={formData.description} onChange={handleFormInputChange} disabled={isSubmitting} />
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                     <Label htmlFor="price">Price</Label>
-                    <Input id="price" name="price" type="number" step="0.01" value={formData.price} onChange={handleChange} required disabled={isSubmitting} />
+                    <Input id="price" name="price" type="number" step="0.01" value={formData.price} onChange={handleFormInputChange} required disabled={isSubmitting} />
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="stock">Stock Quantity</Label>
-                    <Input id="stock" name="stock" type="number" step="1" value={formData.stock} onChange={handleChange} required disabled={isSubmitting} />
+                    <Input id="stock" name="stock" type="number" step="1" value={formData.stock} onChange={handleFormInputChange} required disabled={isSubmitting} />
                 </div>
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
@@ -208,13 +286,58 @@ export default function EditProductPage() {
                     </Select>
                 </div>
             </div>
-             <div className="space-y-2">
-              <Label htmlFor="imageUrl">Image URL</Label>
-              <Input id="imageUrl" name="imageUrl" value={formData.imageUrl} onChange={handleChange} disabled={isSubmitting} placeholder="https://placehold.co/600x400.png" />
+
+            <div className="space-y-2">
+              <Label htmlFor="imageFile">Upload New Image (Optional)</Label>
+              <Input 
+                id="imageFile" 
+                name="imageFile" 
+                type="file" 
+                accept="image/*" 
+                onChange={handleFileChange} 
+                disabled={isSubmitting}
+                className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+              />
+              <p className="text-xs text-muted-foreground mt-1">Uploading a new file will replace the current image URL.</p>
+               <p className="text-xs text-muted-foreground mt-1">Or</p>
             </div>
+
+             <div className="space-y-2">
+              <Label htmlFor="imageUrl">Current or New Image URL</Label>
+              <Input 
+                id="imageUrl" 
+                name="imageUrl" 
+                value={manualImageUrlInput} // Bind to the separate state for URL input
+                onChange={handleManualImageUrlInputChange} 
+                disabled={isSubmitting || !!imageFile} 
+                placeholder="https://example.com/image.png" 
+              />
+            </div>
+            
+            {imagePreviewUrl && (
+              <div className="space-y-2">
+                <Label>Image Preview</Label>
+                <div className="mt-2 relative w-full aspect-video max-w-sm border rounded-md overflow-hidden bg-muted">
+                  <NextImage src={imagePreviewUrl} alt="Product Preview" layout="fill" objectFit="contain" data-ai-hint="product current image"/>
+                </div>
+              </div>
+            )}
+             {!imagePreviewUrl && ( // Show placeholder if no preview is available
+                 <div className="space-y-2">
+                    <Label>Image Preview</Label>
+                    <div className="mt-2 flex items-center justify-center w-full aspect-video max-w-sm border border-dashed rounded-md bg-muted text-muted-foreground">
+                       <div className="text-center">
+                         <UploadCloud size={32} className="mx-auto mb-1" />
+                         <p className="text-sm">No image selected or URL provided</p>
+                       </div>
+                    </div>
+                 </div>
+            )}
+
+
              <div className="space-y-2">
               <Label htmlFor="rating">Rating (Optional, 1-5)</Label>
-              <Input id="rating" name="rating" type="number" step="0.1" min="1" max="5" value={formData.rating || ''} onChange={handleChange} disabled={isSubmitting} />
+              <Input id="rating" name="rating" type="number" step="0.1" min="1" max="5" value={formData.rating || ''} onChange={handleFormInputChange} disabled={isSubmitting} />
             </div>
             <div className="flex items-center space-x-2">
                 <Checkbox id="featured" name="featured" checked={formData.featured} onCheckedChange={(checked) => setFormData(prev => prev ? { ...prev, featured: Boolean(checked) } : null)} disabled={isSubmitting} />
@@ -235,3 +358,4 @@ export default function EditProductPage() {
     </div>
   );
 }
+      
