@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { use, useEffect, useState } from 'react'; // Added 'use'
 import Image from 'next/image';
 import type { Product } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,9 @@ import { Badge } from '@/components/ui/badge';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, collection, query, where, limit, getDocs, DocumentData, QuerySnapshot } from 'firebase/firestore';
 
-export default function ProductDetailPage({ params }: { params: { id: string } }) {
+export default function ProductDetailPage({ params: paramsAsPromise }: { params: { id: string } }) {
+  const params = use(paramsAsPromise); // Unwrap the params
+
   const [product, setProduct] = useState<Product | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [quantity, setQuantity] = useState(1);
@@ -26,13 +28,13 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
 
   useEffect(() => {
     const fetchProduct = async () => {
-      if (!params.id) {
+      if (!params.id) { // Use unwrapped params.id
         setIsLoading(false);
         return;
       }
       setIsLoading(true);
       try {
-        const productDocRef = doc(db, 'products', params.id);
+        const productDocRef = doc(db, 'products', params.id); // Use unwrapped params.id
         const productSnap = await getDoc(productDocRef);
 
         if (productSnap.exists()) {
@@ -45,7 +47,7 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
             const relatedQuery = query(
               productsCollectionRef,
               where('category', '==', fetchedProductData.category),
-              where('id', '!=', fetchedProductData.id), // Exclude current product using Firestore ID
+              where('id', '!=', fetchedProductData.id), // Use unwrapped params.id (already done correctly as it's fetchedProductData.id)
               limit(4)
             );
             const relatedSnap = await getDocs(relatedQuery);
@@ -62,8 +64,22 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
         setIsLoading(false);
       }
     };
-    fetchProduct();
-  }, [params.id, toast]);
+    
+    // Ensure params and params.id are available before fetching
+    if (params && params.id) {
+      fetchProduct();
+    } else {
+      // If params or params.id is not available after `use(paramsAsPromise)`
+      // (which should suspend if paramsAsPromise is a promise and not resolve to a usable state),
+      // then we might be in an unexpected state or the promise resolved to something without an id.
+      // For now, align with original logic of not fetching if id is missing.
+      setIsLoading(false);
+      if(!params || !params.id) { // Add an explicit check if params itself or id is null/undefined post `use`
+          // This case might indicate an issue with routing or how params are provided
+          toast({ title: "Error", description: "Product ID not available for fetching.", variant: "destructive" });
+      }
+    }
+  }, [params, toast]); // Depend on the resolved params object (or params.id if more specific)
 
   if (isLoading) {
     return (
