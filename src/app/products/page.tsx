@@ -1,16 +1,16 @@
 
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, use } from 'react';
 import { ProductCard } from '@/components/products/product-card';
 import { ProductFilters, type Filters } from '@/components/products/product-filters';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Filter, LayoutGrid, List, Package } from 'lucide-react';
+import { Filter, Package } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, query, where, orderBy, onSnapshot, QuerySnapshot, DocumentData } from 'firebase/firestore';
+import { collection, onSnapshot, QuerySnapshot, DocumentData } from 'firebase/firestore';
 import type { Product } from '@/types';
 import { mockCategories, mockBrands } from '@/lib/mock-data';
 import { useToast } from "@/hooks/use-toast";
@@ -23,6 +23,9 @@ const INITIAL_MAX_PRICE = 500;
 export default function ProductsPage() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [maxPrice, setMaxPrice] = useState(INITIAL_MAX_PRICE);
+  const searchParamsPromise = useSearchParams(); // Get the promise-like searchParams
+  const resolvedSearchParams = use(searchParamsPromise); // Unwrap with React.use()
+
   const [filters, setFilters] = useState<Filters>({
     category: '',
     brand: '',
@@ -33,15 +36,14 @@ export default function ProductsPage() {
   const [isClient, setIsClient] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
-  const searchParams = useSearchParams();
 
   useEffect(() => {
     setIsClient(true);
-    const categoryFromUrl = searchParams.get('category');
+    const categoryFromUrl = resolvedSearchParams.get('category');
     if (categoryFromUrl) {
       setFilters(prevFilters => ({ ...prevFilters, category: categoryFromUrl }));
     }
-  }, [searchParams]);
+  }, [resolvedSearchParams]); // Depend on resolvedSearchParams
 
   const isMobile = useIsMobile();
 
@@ -200,7 +202,6 @@ export default function ProductsPage() {
                       <SelectItem value="name-desc">Name: Z to A</SelectItem>
                     </SelectContent>
                   </Select>
-                  {/* View mode buttons removed */}
               </div>
             </div>
           )}
