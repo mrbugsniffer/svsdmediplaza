@@ -18,7 +18,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import Image from 'next/image';
 import { useAuth } from '@/context/auth-context';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp, doc, getDoc, setDoc, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, getDoc, setDoc, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import type { ShippingAddress, UserProfile } from '@/types';
 import { Checkbox } from '@/components/ui/checkbox';
 
