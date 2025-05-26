@@ -33,7 +33,7 @@ export default function ProductsPage() {
   const [isClient, setIsClient] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
-  
+
   useEffect(() => {
     setIsClient(true);
   }, []);
@@ -43,14 +43,14 @@ export default function ProductsPage() {
   useEffect(() => {
     setIsLoading(true);
     const productsCollectionRef = collection(db, 'products');
-    
+
     const unsubscribe = onSnapshot(productsCollectionRef, (snapshot: QuerySnapshot<DocumentData>) => {
       const productsData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
       } as Product));
       setAllProducts(productsData);
-      
+
       if (productsData.length > 0) {
         const newMaxPrice = Math.max(...productsData.map(p => p.price), INITIAL_MAX_PRICE);
         setMaxPrice(newMaxPrice);
@@ -76,13 +76,25 @@ export default function ProductsPage() {
   const filteredProducts = useMemo(() => {
     let products = [...allProducts]; // Create a copy to sort
 
+    // Define the standard categories (excluding "Others") for the "Others" filter logic
+    const standardMockCategories = mockCategories.filter(c => c !== "Others");
+
     products = products.filter(product => {
       const searchLower = filters.searchQuery.toLowerCase();
       const nameMatch = product.name.toLowerCase().includes(searchLower);
       const descriptionMatch = product.description?.toLowerCase().includes(searchLower) || false;
-      const categoryMatch = filters.category ? product.category === filters.category : true;
+      
+      const categoryMatch =
+        filters.category === '' // "All Categories"
+          ? true
+          : filters.category === 'Others'
+          // Product's category is not empty AND not in the standard list of mockCategories
+          ? (product.category && !standardMockCategories.includes(product.category))
+          : product.category === filters.category;
+      
       const brandMatch = filters.brand ? product.brand === filters.brand : true;
       const priceMatch = product.price >= filters.priceRange[0] && product.price <= filters.priceRange[1];
+      
       return (nameMatch || descriptionMatch) && categoryMatch && brandMatch && priceMatch;
     });
 
@@ -120,8 +132,8 @@ export default function ProductsPage() {
         <div className="w-full lg:w-3/4">
           <div className="h-10 bg-muted rounded w-1/3 mb-4 animate-pulse"></div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {[...Array(8)].map((_, i) => ( // Increased placeholder count for 4 columns
-              <div key={i} className="bg-card rounded-xl shadow-lg p-4 animate-pulse h-72"></div> // Reduced placeholder height
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="bg-card rounded-xl shadow-lg p-4 animate-pulse h-72"></div>
             ))}
           </div>
         </div>
@@ -134,7 +146,7 @@ export default function ProductsPage() {
   return (
     <div>
       <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-6">Our Products</h1>
-      
+
       <div className="flex flex-col lg:flex-row gap-6">
         {isMobile ? (
           <Sheet>
@@ -196,14 +208,14 @@ export default function ProductsPage() {
               </div>
             </div>
           )}
-          
+
           {isLoading ? (
              <div className="flex justify-center items-center py-20">
                 <Package size={48} className="animate-pulse mr-4 text-primary" />
                 <p className="text-xl text-muted-foreground">Loading products...</p>
             </div>
           ) : filteredProducts.length > 0 ? (
-            <div className={`grid gap-4 ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4' : 'grid-cols-1'}`}> {/* Updated grid columns */}
+            <div className={`grid gap-4 ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4' : 'grid-cols-1'}`}>
               {filteredProducts.map(product => (
                 <ProductCard key={product.id} product={product} />
               ))}

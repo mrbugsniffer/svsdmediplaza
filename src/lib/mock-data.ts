@@ -5,23 +5,24 @@ import { doc, getDoc, collection, getDocs, query, where, limit, Timestamp } from
 
 
 export const mockCategories: string[] = [
-    "Pain Relief", 
-    "Vitamins & Supplements", 
-    "Skin Care", 
-    "Cold & Flu", 
-    "Eye Care", 
-    "Baby Care", 
-    "Personal Care", 
+    "Pain Relief",
+    "Vitamins & Supplements",
+    "Skin Care",
+    "Cold & Flu",
+    "Eye Care",
+    "Baby Care",
+    "Personal Care",
     "Dental Care",
-    "First Aid"
+    "First Aid",
+    "Others" // Added "Others" category
 ];
 
 export const mockBrands: string[] = [
-    "PharmaWell", 
-    "NutriBoost", 
-    "DermaCare", 
-    "HealFast", 
-    "MediChoice", 
+    "PharmaWell",
+    "NutriBoost",
+    "DermaCare",
+    "HealFast",
+    "MediChoice",
     "HealthPlus",
     "OralFresh"
 ];
@@ -35,8 +36,8 @@ export const getProductByIdFs = async (id: string): Promise<Product | undefined>
     const productSnap = await getDoc(productDocRef);
     if (productSnap.exists()) {
       const data = productSnap.data();
-      return { 
-        id: productSnap.id, 
+      return {
+        id: productSnap.id,
         ...data,
         // Ensure price and stock are numbers
         price: Number(data.price) || 0,
@@ -57,8 +58,8 @@ export const getAllProductsFs = async (): Promise<Product[]> => {
     const productsSnap = await getDocs(productsCollectionRef);
     return productsSnap.docs.map(doc => {
       const data = doc.data();
-      return { 
-        id: doc.id, 
+      return {
+        id: doc.id,
         ...data,
         price: Number(data.price) || 0,
         stock: Number(data.stock) || 0,
@@ -78,8 +79,8 @@ export const getFeaturedProductsFs = async (count: number = 4): Promise<Product[
     const productsSnap = await getDocs(q);
     return productsSnap.docs.map(doc => {
       const data = doc.data();
-      return { 
-        id: doc.id, 
+      return {
+        id: doc.id,
         ...data,
         price: Number(data.price) || 0,
         stock: Number(data.stock) || 0,
@@ -101,8 +102,8 @@ export const getOrderById = async (id: string): Promise<Order | undefined> => {
     const orderSnap = await getDoc(orderDocRef);
     if (orderSnap.exists()) {
       const data = orderSnap.data();
-      return { 
-        id: orderSnap.id, 
+      return {
+        id: orderSnap.id,
         ...data,
         // Ensure date fields are correctly handled (they will be Firestore Timestamps)
         orderDate: data.orderDate, // Keep as Timestamp or convert to Date object
@@ -116,3 +117,4 @@ export const getOrderById = async (id: string): Promise<Order | undefined> => {
     return undefined;
   }
 };
+
