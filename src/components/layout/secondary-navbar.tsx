@@ -16,6 +16,7 @@ const dedicatedCategoryPages: Record<string, string> = {
   "Pain Relief": "/category/pain-relief",
   "Cold & Flu": "/category/cold-flu",
   "Eye Care": "/category/eye-care",
+  "Dental Care": "/category/dental-care",
   // Add other categories with dedicated pages here
 };
 
@@ -24,9 +25,10 @@ export function SecondaryNavbar() {
     { href: '/products', label: 'All Products' },
     ...mockCategories.map(category => {
       const dedicatedPagePath = dedicatedCategoryPages[category];
+      const label = category === "Vitamins & Supplements" ? "Nutritional Drinks & Supplements" : category;
       return {
         href: dedicatedPagePath || `/products?category=${encodeURIComponent(category)}`,
-        label: category,
+        label: label,
       };
     })
   ];
