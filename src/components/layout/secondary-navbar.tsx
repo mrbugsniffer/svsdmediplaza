@@ -12,7 +12,8 @@ const dedicatedCategoryPages: Record<string, string> = {
   "Nutritional Drinks & Supplements": "/category/nutritional-drinks-supplements",
   "Women Care": "/category/women-care",
   "Personal Care": "/category/personal-care",
-  "Skin Care": "/category/skin-care", // Added Skin Care dedicated page
+  "Skin Care": "/category/skin-care",
+  "Pain Relief": "/category/pain-relief", // Added Pain Relief dedicated page
   // Add other categories with dedicated pages here
 };
 
@@ -21,9 +22,12 @@ export function SecondaryNavbar() {
     { href: '/products', label: 'All Products' },
     ...mockCategories.map(category => {
       const dedicatedPagePath = dedicatedCategoryPages[category];
+      // Map "Vitamins & Supplements" from mockCategories to the "Nutritional Drinks & Supplements" page and label
+      const label = category === "Vitamins & Supplements" ? "Nutritional Drinks & Supplements" : category;
+      
       return {
         href: dedicatedPagePath || `/products?category=${encodeURIComponent(category)}`,
-        label: category,
+        label: label,
       };
     })
   ];
