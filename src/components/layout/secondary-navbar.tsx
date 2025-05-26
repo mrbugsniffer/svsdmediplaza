@@ -15,7 +15,7 @@ const dedicatedCategoryPages: Record<string, string> = {
   "Skin Care": "/category/skin-care",
   "Pain Relief": "/category/pain-relief",
   "Cold & Flu": "/category/cold-flu",
-  "Eye Care": "/category/eye-care", // Added Eye Care dedicated page
+  "Eye Care": "/category/eye-care",
   // Add other categories with dedicated pages here
 };
 
@@ -24,33 +24,17 @@ export function SecondaryNavbar() {
     { href: '/products', label: 'All Products' },
     ...mockCategories.map(category => {
       const dedicatedPagePath = dedicatedCategoryPages[category];
-      // Map "Vitamins & Supplements" from mockCategories to the "Nutritional Drinks & Supplements" page and label
-      // This mapping is no longer strictly needed as we updated mockCategories, but kept for robustness.
-      const label = category === "Vitamins & Supplements" ? "Nutritional Drinks & Supplements" : category;
-      
       return {
         href: dedicatedPagePath || `/products?category=${encodeURIComponent(category)}`,
-        label: label,
+        label: category,
       };
     })
   ];
 
   const uniqueLabels = new Set<string>();
   const finalNavLinks = navLinks.filter(link => {
-    if (link.label === "Others" || uniqueLabels.has(link.label)) {
-      // Handle specific case for Nutritional Drinks if it was mapped from Vitamins & Supplements
-      // and also existed as "Nutritional Drinks & Supplements" in mockCategories.
-      if (link.label === "Nutritional Drinks & Supplements" && uniqueLabels.has(link.label)) {
-        // Only allow it once. If the dedicated page is `/category/nutritional-drinks-supplements`,
-        // and this link also points there, it's a duplicate.
-        // This logic might need refinement based on exact mockCategories content if duplicates are complex.
-        // For now, simple label check.
-        return false;
-      }
-      // General duplicate label check
-      if (link.label !== "Nutritional Drinks & Supplements" && uniqueLabels.has(link.label)) {
-          return false;
-      }
+    if (uniqueLabels.has(link.label)) {
+      return false;
     }
     uniqueLabels.add(link.label);
     return true;
