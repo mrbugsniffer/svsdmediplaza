@@ -11,7 +11,8 @@ const dedicatedCategoryPages: Record<string, string> = {
   "Baby Care": "/category/baby-care",
   "Nutritional Drinks & Supplements": "/category/nutritional-drinks-supplements",
   "Women Care": "/category/women-care",
-  "Personal Care": "/category/personal-care", // Added Personal Care dedicated page
+  "Personal Care": "/category/personal-care",
+  "Skin Care": "/category/skin-care", // Added Skin Care dedicated page
   // Add other categories with dedicated pages here
 };
 
@@ -20,13 +21,6 @@ export function SecondaryNavbar() {
     { href: '/products', label: 'All Products' },
     ...mockCategories.map(category => {
       const dedicatedPagePath = dedicatedCategoryPages[category];
-      // Map "Vitamins & Supplements" from mock data to "Nutritional Drinks & Supplements" page/label
-      if (category === "Vitamins & Supplements" && dedicatedCategoryPages["Nutritional Drinks & Supplements"]) {
-        return {
-          href: dedicatedCategoryPages["Nutritional Drinks & Supplements"],
-          label: "Nutritional Drinks & Supplements",
-        };
-      }
       return {
         href: dedicatedPagePath || `/products?category=${encodeURIComponent(category)}`,
         label: category,
