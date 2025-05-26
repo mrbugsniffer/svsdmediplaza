@@ -40,7 +40,7 @@ export default function ProductsPage() {
     setIsClient(true);
     const categoryFromUrl = searchParams.get('category');
     if (categoryFromUrl) {
-      setFilters(prevFilters => ({ ...prevFilters, category: categoryFromUrl }));
+      setFilters(prevFilters => ({ ...prevFilters, category: decodeURIComponent(categoryFromUrl) }));
     }
   }, [searchParams]);
 
@@ -132,7 +132,7 @@ export default function ProductsPage() {
         </div>
         <div className="w-full lg:w-3/4">
           <div className="h-8 bg-muted rounded w-1/3 mb-3 animate-pulse"></div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
             {[...Array(10)].map((_, i) => (
               <div key={i} className="bg-card rounded-xl shadow-lg p-2 animate-pulse h-52"></div>
             ))}
@@ -208,7 +208,7 @@ export default function ProductsPage() {
                 <p className="text-lg text-muted-foreground">Loading products...</p>
             </div>
           ) : filteredProducts.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3"> 
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3"> 
               {filteredProducts.map(product => (
                 <ProductCard key={product.id} product={product} />
               ))}

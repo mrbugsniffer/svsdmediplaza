@@ -21,7 +21,7 @@ export default function HomePage() {
   useEffect(() => {
     setIsLoading(true);
     const productsCollectionRef = collection(db, 'products');
-    const featuredQuery = query(productsCollectionRef, where('featured', '==', true), limit(4));
+    const featuredQuery = query(productsCollectionRef, where('featured', '==', true), limit(5)); // Fetch 5 featured products
     
     const unsubscribe = onSnapshot(featuredQuery, (snapshot: QuerySnapshot<DocumentData>) => {
       const productsData = snapshot.docs.map(doc => ({
@@ -53,8 +53,8 @@ export default function HomePage() {
           </Button>
         </div>
         {isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-                {[...Array(4)].map((_, i) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6"> {/* Adjusted for 5 columns on lg */}
+                {[...Array(5)].map((_, i) => ( // Show 5 skeletons
                     <div key={i} className="bg-card rounded-xl shadow-lg p-4 animate-pulse">
                         <div className="aspect-[4/3] bg-muted rounded mb-4"></div>
                         <div className="h-6 bg-muted rounded w-3/4 mb-2"></div>
@@ -64,7 +64,7 @@ export default function HomePage() {
                 ))}
             </div>
         ) : featuredProducts.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6"> {/* Adjusted for 5 columns on lg */}
             {featuredProducts.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
