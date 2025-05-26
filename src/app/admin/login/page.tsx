@@ -24,9 +24,15 @@ export default function AdminLoginPage() {
 
   useEffect(() => {
     // If localStorage flag is set, attempt to redirect.
-    // AdminLayout will perform the more robust auth check.
+    // Also ensure the user is actually authenticated with Firebase as the admin.
+    // This handles cases where localStorage might be stale or tampered with.
     if (localStorage.getItem(ADMIN_AUTH_KEY) === 'true') {
-      router.replace('/admin/dashboard');
+      if (auth.currentUser && auth.currentUser.email === ADMIN_EMAIL) {
+        router.replace('/admin/dashboard');
+      } else {
+        // Clear stale or invalid localStorage flag if Firebase auth doesn't match
+        localStorage.removeItem(ADMIN_AUTH_KEY);
+      }
     }
   }, [router]);
 
@@ -34,55 +40,62 @@ export default function AdminLoginPage() {
     e.preventDefault();
     setIsLoading(true);
 
-    if (email !== ADMIN_EMAIL) {
+    if (email.trim().toLowerCase() !== ADMIN_EMAIL) {
       toast({
-        title: "Admin Login Failed",
-        description: `Only the designated admin email (${ADMIN_EMAIL}) can access this portal.`,
+        title: "Admin Portal Access Denied",
+        description: `Login attempt failed. This portal is restricted to the admin email address (${ADMIN_EMAIL}). You attempted to login with: ${email}.`,
         variant: "destructive",
+        duration: 6000,
       });
       setIsLoading(false);
       return;
     }
 
+    // At this point, email IS ADMIN_EMAIL. Now, attempt Firebase Authentication.
     try {
-      // Attempt to sign in the admin user with Firebase.
-      // The password must match the one set for ADMIN_EMAIL in Firebase Authentication.
       await signInWithEmailAndPassword(auth, email, password);
       
-      // If Firebase sign-in is successful, set the local flag
+      // If Firebase sign-in is successful for ADMIN_EMAIL
       localStorage.setItem(ADMIN_AUTH_KEY, 'true');
       
       toast({
         title: "Admin Login Successful",
-        description: "Firebase authentication succeeded. Welcome to the Admin Portal.",
+        description: `Welcome, ${ADMIN_EMAIL}! Redirecting to dashboard...`,
       });
       router.push('/admin/dashboard');
 
     } catch (firebaseError: any) {
-      // Handle Firebase sign-in errors
-      console.error("Admin Firebase sign-in error:", firebaseError);
-      let userFriendlyMessage = "An unexpected error occurred during admin login.";
+      console.error("Admin Firebase sign-in error for", ADMIN_EMAIL, ":", firebaseError);
+      let userFriendlyMessage = "An unexpected error occurred during admin login. Please try again.";
 
       if (firebaseError.code === 'auth/invalid-credential' || 
-          firebaseError.code === 'auth/user-not-found' || 
+          firebaseError.code === 'auth/user-not-found' || // user-not-found can also indicate wrong email if it's not registered
           firebaseError.code === 'auth/wrong-password') {
-        userFriendlyMessage = `Login attempt failed for ${ADMIN_EMAIL}. The email or password provided is incorrect. Please ensure this account is correctly set up in Firebase Authentication and that you are using the right password.`;
+        userFriendlyMessage = `Login attempt failed for admin ${ADMIN_EMAIL}. The password provided is incorrect, or this admin account is not correctly set up or enabled in Firebase Authentication.`;
       } else if (firebaseError.code === 'auth/too-many-requests') {
-        userFriendlyMessage = "Access temporarily disabled due to too many failed login attempts. Please try again later.";
-      } else if (firebaseError.message) {
-        userFriendlyMessage = firebaseError.message;
+        userFriendlyMessage = "Access to this account has been temporarily disabled due to many failed login attempts. You can reset your password or try again later.";
+      } else if (firebaseError.code === 'auth/user-disabled') {
+        userFriendlyMessage = `The admin account for ${ADMIN_EMAIL} has been disabled. Please contact support.`;
       }
       
       toast({
-        title: "Admin Login Failed",
-        description: `Firebase Authentication Error: ${userFriendlyMessage}`,
+        title: "Admin Authentication Failed",
+        description: userFriendlyMessage,
         variant: "destructive",
-        duration: 8000, // Longer duration for important errors
+        duration: 8000, 
       });
     } finally {
       setIsLoading(false);
     }
   };
+  
+  // Secondary effect to redirect if already logged in as admin (e.g. page refresh)
+  useEffect(() => {
+      if (auth.currentUser && auth.currentUser.email === ADMIN_EMAIL && localStorage.getItem(ADMIN_AUTH_KEY) === 'true') {
+          router.replace('/admin/dashboard');
+      }
+  }, [router]);
+
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-muted">
@@ -90,7 +103,7 @@ export default function AdminLoginPage() {
         <CardHeader className="text-center">
           <ShieldCheck size={48} className="mx-auto text-primary mb-4" />
           <CardTitle className="text-3xl font-bold">Admin Portal</CardTitle>
-          <CardDescription>Login to manage SVSD mediplaza. <br/>Use your designated admin credentials.</CardDescription>
+          <CardDescription>Login to manage SVSD mediplaza. <br/>Use your designated admin credentials ({ADMIN_EMAIL}).</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -119,7 +132,7 @@ export default function AdminLoginPage() {
               />
             </div>
             <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isLoading}>
-              {isLoading ? 'Logging in...' : 'Login'}
+              {isLoading ? 'Logging in...' : 'Login to Admin Portal'}
             </Button>
           </form>
         </CardContent>
@@ -127,3 +140,4 @@ export default function AdminLoginPage() {
     </div>
   );
 }
+ 
