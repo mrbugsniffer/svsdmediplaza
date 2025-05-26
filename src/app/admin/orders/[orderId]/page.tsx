@@ -1,7 +1,7 @@
 
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useState, ChangeEvent, FormEvent } from 'react'; // Added specific event types
 import { useParams, useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -28,8 +28,9 @@ const orderStatusOptions: Order['status'][] = ['Pending', 'Processing', 'Shipped
 
 
 export default function AdminOrderDetailPage() {
+  // Correctly use React.use with useParams for dynamic routes in Client Components
   const paramsAsPromise = useParams();
-  const resolvedParams = use(paramsAsPromise as any) as { orderId: string };
+  const resolvedParams = use(paramsAsPromise as any) as { orderId?: string }; // Ensure orderId can be undefined
   const orderId = resolvedParams?.orderId;
   const router = useRouter();
   const { toast } = useToast();
@@ -54,6 +55,7 @@ export default function AdminOrderDetailPage() {
               ...data,
               orderDate: data.orderDate?.toDate ? data.orderDate.toDate() : new Date(data.orderDate),
               createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt),
+              updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : undefined, // Handle optional updatedAt
             } as Order;
             setOrder(fetchedOrder);
             setSelectedStatus(fetchedOrder.status);
@@ -69,12 +71,12 @@ export default function AdminOrderDetailPage() {
         }
       };
       fetchOrder();
-    } else {
+    } else if (resolvedParams && !orderId) { // If params are resolved but no ID
         setIsLoading(false);
-        toast({ title: "Error", description: "Order ID is missing.", variant: "destructive" });
+        toast({ title: "Error", description: "Order ID is missing in URL.", variant: "destructive" });
         router.push('/admin/orders');
     }
-  }, [orderId, router, toast]);
+  }, [orderId, router, toast, resolvedParams]);
 
   const handleStatusUpdate = async () => {
     if (!order || !selectedStatus || selectedStatus === order.status) return;
@@ -83,9 +85,9 @@ export default function AdminOrderDetailPage() {
         const orderDocRef = doc(db, 'orders', order.id);
         await updateDoc(orderDocRef, {
             status: selectedStatus,
-            updatedAt: serverTimestamp() // Assuming you add 'updatedAt' to your Order type
+            updatedAt: serverTimestamp() 
         });
-        setOrder(prevOrder => prevOrder ? { ...prevOrder, status: selectedStatus! } : null);
+        setOrder(prevOrder => prevOrder ? { ...prevOrder, status: selectedStatus!, updatedAt: new Date() } : null); // Optimistically update updatedAt
         toast({ title: "Status Updated", description: `Order status changed to ${selectedStatus}.`});
     } catch (error: any) {
         console.error("Error updating order status:", error);
@@ -104,7 +106,7 @@ export default function AdminOrderDetailPage() {
       case 'Pending': return 'default';
       case 'Processing': return 'secondary';
       case 'Shipped': return 'outline';
-      case 'Delivered': return 'default'; // Consider a 'success' variant if available or a green color
+      case 'Delivered': return 'default'; 
       case 'Cancelled': return 'destructive';
       default: return 'default';
     }
@@ -142,13 +144,17 @@ export default function AdminOrderDetailPage() {
       </Button>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: Order Info, Customer, Shipping */}
         <div className="lg:col-span-2 space-y-6">
           <Card className="shadow-md">
             <CardHeader>
               <CardTitle className="text-2xl">Order ID: {order.id}</CardTitle>
               <CardDescription>
                 Placed on: {order.orderDate ? format(order.orderDate, "MMMM d, yyyy 'at' h:mm a") : 'N/A'}
+                {order.updatedAt && (
+                    <span className="block text-xs text-muted-foreground mt-1">
+                        Last Updated: {format(order.updatedAt, "MMMM d, yyyy 'at' h:mm a")}
+                    </span>
+                )}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -164,7 +170,7 @@ export default function AdminOrderDetailPage() {
                 </div>
               )}
               <div className="flex items-center gap-2">
-                <UserCircle size={18} className="text-muted-foreground" />
+                <UserCircle size={18} className="text-muted-foreground" /> {/* Icon can be MailIcon */}
                 <span className="text-muted-foreground">Customer Email:</span>
                 <span className="font-medium">{order.customerEmail}</span>
               </div>
@@ -185,7 +191,6 @@ export default function AdminOrderDetailPage() {
           </Card>
         </div>
 
-        {/* Right Column: Status Update, Totals */}
         <div className="lg:col-span-1 space-y-6">
           <Card className="shadow-md">
             <CardHeader>
@@ -223,13 +228,11 @@ export default function AdminOrderDetailPage() {
                     <span>Grand Total:</span>
                     <span>${order.totalAmount.toFixed(2)}</span>
                 </div>
-                {/* You can add subtotal, shipping, taxes here if they are part of your Order type */}
             </CardContent>
           </Card>
         </div>
       </div>
 
-      {/* Items Table */}
       <Card className="shadow-md">
         <CardHeader>
           <CardTitle>Order Items ({order.items.length})</CardTitle>
@@ -271,7 +274,3 @@ export default function AdminOrderDetailPage() {
     </div>
   );
 }
-
-    
-
-    

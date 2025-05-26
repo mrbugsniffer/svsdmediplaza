@@ -22,13 +22,19 @@ export default function AdminOrdersPage() {
 
   useEffect(() => {
     const currentUser = auth.currentUser;
+    console.log("AdminOrdersPage: Firebase currentUser on mount:", currentUser?.email); // Diagnostic log
     if (currentUser) {
       setIsFirebaseAuthenticated(true);
     } else {
       setIsFirebaseAuthenticated(false);
       setIsLoading(false); // Not authenticated, so stop loading
-      // Potentially redirect or show an error, though AdminLayout should handle this
-      console.warn("AdminOrdersPage: No Firebase user authenticated.");
+      console.warn("AdminOrdersPage: No Firebase user authenticated. Cannot fetch orders.");
+      toast({
+        title: "Authentication Required",
+        description: "Admin user not authenticated. Please log in to view orders.",
+        variant: "destructive",
+        duration: 8000
+      });
       return;
     }
 
@@ -61,14 +67,14 @@ export default function AdminOrdersPage() {
     });
 
     return () => unsubscribe();
-  }, [toast]);
+  }, [toast]); // Removed isFirebaseAuthenticated from dependencies as it's set within this effect
 
   const getStatusBadgeVariant = (status: Order['status']) => {
     switch (status) {
       case 'Pending': return 'default';
       case 'Processing': return 'secondary';
       case 'Shipped': return 'outline';
-      case 'Delivered': return 'default'; // Consider a 'success' variant
+      case 'Delivered': return 'default'; 
       case 'Cancelled': return 'destructive';
       default: return 'default';
     }
@@ -148,7 +154,7 @@ export default function AdminOrdersPage() {
                     <TableRow>
                       <TableCell colSpan={6} className="text-center h-24">
                         <PackageSearch size={32} className="mx-auto mb-2 text-muted-foreground"/>
-                        No orders found. This could be due to no orders being placed, or permission issues.
+                        No orders found. This could be due to no orders being placed, or permission issues with Firestore.
                       </TableCell>
                     </TableRow>
                   )}

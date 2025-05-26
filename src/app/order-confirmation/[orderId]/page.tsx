@@ -9,13 +9,14 @@ import Link from "next/link";
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import type { Order, CartItem } from '@/types';
-import { format } from 'date-fns'; // For formatting timestamp
+import { format } from 'date-fns'; 
 import Image from 'next/image';
 import { Separator } from '@/components/ui/separator';
 
 export default function OrderConfirmationPage({ params: paramsAsPromise }: { params: { orderId: string } }) {
-  const resolvedParams = use(paramsAsPromise as any) as { orderId: string }; 
-  const { orderId } = resolvedParams;
+  // Correctly use React.use for unwrapping params prop in Client Components
+  const resolvedParams = use(paramsAsPromise as any) as { orderId?: string }; 
+  const orderId = resolvedParams?.orderId; // orderId can be undefined if params are not resolved or missing
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
@@ -24,7 +25,8 @@ export default function OrderConfirmationPage({ params: paramsAsPromise }: { par
     const fetchOrderDetails = async () => {
       if (!orderId) {
         setLoading(false);
-        console.error("Order ID is missing.");
+        console.error("Order ID is missing from params.");
+        // Optionally, redirect or show a more specific error to the user
         return;
       }
       setLoading(true);
@@ -33,7 +35,14 @@ export default function OrderConfirmationPage({ params: paramsAsPromise }: { par
         const orderSnap = await getDoc(orderDocRef);
 
         if (orderSnap.exists()) {
-          const orderData = { id: orderSnap.id, ...orderSnap.data() } as Order;
+          const data = orderSnap.data();
+          const orderData = { 
+              id: orderSnap.id, 
+              ...data,
+              // Ensure date fields are correctly handled
+              orderDate: data.orderDate?.toDate ? data.orderDate.toDate() : new Date(data.orderDate),
+              createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt),
+            } as Order;
           setOrder(orderData);
         } else {
           console.error("Order not found in Firestore.");
@@ -48,7 +57,7 @@ export default function OrderConfirmationPage({ params: paramsAsPromise }: { par
     };
 
     fetchOrderDetails();
-  }, [orderId]);
+  }, [orderId]); // Dependency on resolved orderId
 
   if (loading) {
     return (
@@ -67,7 +76,7 @@ export default function OrderConfirmationPage({ params: paramsAsPromise }: { par
          <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center">
             <Package size={64} className="text-destructive mb-6" />
             <h1 className="text-3xl font-bold text-foreground mb-4">Order Not Found</h1>
-            <p className="text-muted-foreground mb-8">We couldn't find details for order ID: {orderId}.</p>
+            <p className="text-muted-foreground mb-8">We couldn't find details for order ID: {orderId || "N/A"}.</p>
             <Button asChild>
                 <Link href="/products">Continue Shopping</Link>
             </Button>
@@ -75,8 +84,8 @@ export default function OrderConfirmationPage({ params: paramsAsPromise }: { par
     )
   }
 
-  const orderDate = order.orderDate?.toDate ? format(order.orderDate.toDate(), "MMMM d, yyyy 'at' h:mm a") : 'Date not available';
-  const estimatedDelivery = new Date( (order.orderDate?.toDate ? order.orderDate.toDate().getTime() : Date.now()) + 5 * 24 * 60 * 60 * 1000).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const orderDateDisplay = order.orderDate ? format(order.orderDate, "MMMM d, yyyy 'at' h:mm a") : 'Date not available';
+  const estimatedDelivery = new Date( (order.orderDate ? order.orderDate.getTime() : Date.now()) + 5 * 24 * 60 * 60 * 1000).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
 
   return (
@@ -98,7 +107,7 @@ export default function OrderConfirmationPage({ params: paramsAsPromise }: { par
           <div className="p-4 bg-muted/30 rounded-lg border space-y-3">
              <div>
                 <h3 className="font-semibold text-foreground mb-1">Order Placed:</h3>
-                <p className="text-md text-foreground">{orderDate}</p>
+                <p className="text-md text-foreground">{orderDateDisplay}</p>
             </div>
             <div>
                 <h3 className="font-semibold text-foreground mb-1">Estimated Delivery:</h3>

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect, use, ChangeEvent, FormEvent } from 'react'; // Added specific event types
 import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,7 +17,7 @@ import { ChevronLeft, Package, UploadCloud } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import type { Product } from '@/types';
-import NextImage from 'next/image'; // Renamed to avoid conflict with local Image component
+import NextImage from 'next/image'; 
 
 interface ProductFormData {
   name: string;
@@ -33,11 +33,12 @@ interface ProductFormData {
 
 export default function EditProductPage() {
   const router = useRouter();
+  // Correctly use React.use with useParams for dynamic routes in Client Components
   const paramsPromise = useParams(); 
-  const resolvedParams = use(paramsPromise as any) as { id: string }; 
+  const resolvedParams = use(paramsPromise as any) as { id?: string }; // Ensure id can be undefined initially
 
   const { toast } = useToast();
-  const productId = resolvedParams.id;
+  const productId = resolvedParams?.id; // productId can be undefined if params are not resolved yet or id is missing
 
   const [formData, setFormData] = useState<ProductFormData | null>(null);
   const [originalProductName, setOriginalProductName] = useState('');
@@ -46,7 +47,6 @@ export default function EditProductPage() {
   
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
-  // Use a separate state for the URL input field to manage its value independently
   const [manualImageUrlInput, setManualImageUrlInput] = useState<string>('');
 
 
@@ -60,7 +60,7 @@ export default function EditProductPage() {
 
           if (productSnap.exists()) {
             const productData = productSnap.data() as Product;
-            const fetchedFormData = {
+            const fetchedFormData: ProductFormData = { // Ensure type for fetchedFormData
               name: productData.name,
               description: productData.description,
               price: productData.price.toString(),
@@ -74,11 +74,10 @@ export default function EditProductPage() {
             setFormData(fetchedFormData);
             setOriginalProductName(productData.name);
             
-            // Initialize preview and manual URL input based on fetched data
             if (productData.imageUrl) {
               if (productData.imageUrl.startsWith('data:image')) {
                 setImagePreviewUrl(productData.imageUrl);
-                setManualImageUrlInput(''); // Don't show data URL in text input
+                setManualImageUrlInput(''); 
               } else {
                 setImagePreviewUrl(productData.imageUrl);
                 setManualImageUrlInput(productData.imageUrl);
@@ -100,17 +99,17 @@ export default function EditProductPage() {
         }
       };
       fetchProduct();
-    } else {
-        toast({ title: "Error", description: "Product ID is missing.", variant: "destructive" });
+    } else if (resolvedParams && !productId) { // If params are resolved but no ID, means invalid route or redirect
+        toast({ title: "Error", description: "Product ID is missing in URL.", variant: "destructive" });
         router.push('/admin/products');
         setIsLoading(false);
     }
-  }, [productId, router, toast]);
+    // Add resolvedParams to dependency if its resolution should trigger refetch, though productId covers it.
+  }, [productId, router, toast, resolvedParams]); 
 
 
-  // Effect to handle preview logic based on imageFile or manualImageUrlInput
   useEffect(() => {
-    if (!formData) return; // Ensure formData is loaded
+    if (!formData) return; 
 
     if (imageFile) {
       const reader = new FileReader();
@@ -122,21 +121,17 @@ export default function EditProductPage() {
       reader.readAsDataURL(imageFile);
     } else if (manualImageUrlInput) {
         setImagePreviewUrl(manualImageUrlInput);
-        // formData.imageUrl is already updated by handleManualImageUrlInputChange
     } else if (formData.imageUrl && !formData.imageUrl.startsWith('data:image')) {
-        // This covers the initial load case where imageUrl is a web URL
         setImagePreviewUrl(formData.imageUrl);
     } else if (formData.imageUrl && formData.imageUrl.startsWith('data:image') && !imageFile && !manualImageUrlInput) {
-        // This covers the case where a data:image was loaded, and user cleared both file and manual input
-        // We should keep the original data:image as preview in this case, or reset it if form is reset
         setImagePreviewUrl(formData.imageUrl);
     } else {
-        setImagePreviewUrl(null); // No file, no manual URL
+        setImagePreviewUrl(null);
     }
-  }, [imageFile, manualImageUrlInput, formData?.imageUrl]); // formData is needed if it changes from elsewhere
+  }, [imageFile, manualImageUrlInput, formData]); 
 
 
-  const handleFormInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleFormInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     if (!formData) return;
     const { name, value, type } = e.target;
     if (type === 'checkbox') {
@@ -147,29 +142,25 @@ export default function EditProductPage() {
     }
   };
 
-  const handleManualImageUrlInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleManualImageUrlInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (!formData) return;
     const url = e.target.value;
-    setManualImageUrlInput(url); // Update the dedicated state for the URL input field
+    setManualImageUrlInput(url); 
     setFormData(prev => prev ? { ...prev, imageUrl: url } : null);
-    if (url) { // If user types a URL, clear any selected file
+    if (url) { 
       setImageFile(null);
-      // setImagePreviewUrl(url); // Preview is handled by useEffect
-    } else if (!imageFile) { // If URL is cleared and no file, clear preview as well
-      // setImagePreviewUrl(null); // Preview is handled by useEffect
     }
   };
   
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (!formData) return;
     const file = e.target.files?.[0];
     if (file) {
-      setImageFile(file); // This will trigger useEffect to set preview and formData.imageUrl
-      setManualImageUrlInput(''); // Clear manual URL input
-    } else { // File was deselected
+      setImageFile(file); 
+      setManualImageUrlInput(''); 
+    } else { 
       setImageFile(null);
-      // Fallback to manualImageUrlInput if it has a value, otherwise formData.imageUrl will be empty
-      setFormData(prev => prev ? { ...prev, imageUrl: manualImageUrlInput } : null);
+      setFormData(prev => prev ? { ...prev, imageUrl: manualImageUrlInput || '' } : null);
     }
   };
 
@@ -178,7 +169,7 @@ export default function EditProductPage() {
     setFormData(prev => prev ? { ...prev, [name]: value } : null);
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!formData || !productId) return; 
     setIsSubmitting(true);
@@ -197,7 +188,7 @@ export default function EditProductPage() {
     try {
       const productDocRef = doc(db, 'products', productId);
       await updateDoc(productDocRef, {
-        ...formData, // spread all fields from formData
+        ...formData, 
         price: parseFloat(formData.price),
         stock: parseInt(formData.stock, 10),
         rating: formData.rating ? parseFloat(formData.rating) : null,
@@ -209,11 +200,11 @@ export default function EditProductPage() {
         description: `${formData.name} has been successfully updated.`,
       });
       router.push('/admin/products');
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating product in Firestore:", error);
       toast({
         title: "Error Updating Product",
-        description: "An unexpected error occurred. Please try again.",
+        description: error.message || "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -224,14 +215,14 @@ export default function EditProductPage() {
   if (isLoading) {
     return (
         <div className="flex flex-col justify-center items-center min-h-[calc(100vh-200px)]">
-            <Package size={32} className="animate-pulse mb-2" />
-            <p>Loading product details...</p>
+            <Package size={32} className="animate-pulse mb-2 text-primary" />
+            <p className="text-muted-foreground">Loading product details...</p>
         </div>
     );
   }
 
   if (!formData) {
-    return <div className="flex justify-center items-center min-h-[calc(100vh-200px)]"><p>Product data could not be loaded.</p></div>;
+    return <div className="flex justify-center items-center min-h-[calc(100vh-200px)]"><p className="text-destructive">Product data could not be loaded or product ID is invalid.</p></div>;
   }
 
   return (
@@ -307,7 +298,7 @@ export default function EditProductPage() {
               <Input 
                 id="imageUrl" 
                 name="imageUrl" 
-                value={manualImageUrlInput} // Bind to the separate state for URL input
+                value={manualImageUrlInput} 
                 onChange={handleManualImageUrlInputChange} 
                 disabled={isSubmitting || !!imageFile} 
                 placeholder="https://example.com/image.png" 
@@ -322,7 +313,7 @@ export default function EditProductPage() {
                 </div>
               </div>
             )}
-             {!imagePreviewUrl && ( // Show placeholder if no preview is available
+             {!imagePreviewUrl && ( 
                  <div className="space-y-2">
                     <Label>Image Preview</Label>
                     <div className="mt-2 flex items-center justify-center w-full aspect-video max-w-sm border border-dashed rounded-md bg-muted text-muted-foreground">
@@ -348,7 +339,7 @@ export default function EditProductPage() {
                  <Button type="button" variant="outline" onClick={() => router.push('/admin/products')} disabled={isSubmitting}>
                     Cancel
                 </Button>
-                <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isSubmitting}>
+                <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isSubmitting || isLoading}>
                   {isSubmitting ? 'Saving Changes...' : 'Save Changes'}
                 </Button>
             </div>
@@ -358,4 +349,3 @@ export default function EditProductPage() {
     </div>
   );
 }
-      

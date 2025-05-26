@@ -17,8 +17,9 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc, collection, query, where, limit, getDocs } from 'firebase/firestore';
 
 export default function ProductDetailPage({ params: paramsAsPromise }: { params: { id: string } }) {
-  const resolvedParams = use(paramsAsPromise as any) as { id: string | undefined };
-  const productId = resolvedParams?.id;
+  // Correctly use React.use for unwrapping params prop in Client Components
+  const resolvedParams = use(paramsAsPromise as any) as { id?: string }; // Ensure id can be undefined
+  const productId = resolvedParams?.id; // productId can be undefined
 
   const [product, setProduct] = useState<Product | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
@@ -31,6 +32,10 @@ export default function ProductDetailPage({ params: paramsAsPromise }: { params:
     const fetchProductDetails = async () => {
       if (!productId) {
         setIsLoading(false);
+        // Optionally show a toast or redirect if productId is crucial and missing after params resolution
+        if (resolvedParams && !productId) { // Only if params are resolved but no ID
+            toast({ title: "Error", description: "Product ID is missing.", variant: "destructive" });
+        }
         return;
       }
       setIsLoading(true);
@@ -47,7 +52,7 @@ export default function ProductDetailPage({ params: paramsAsPromise }: { params:
             const relatedQuery = query(
               productsCollectionRef,
               where('category', '==', fetchedProductData.category),
-              where('id', '!=', fetchedProductData.id),
+              where('id', '!=', fetchedProductData.id), // Firestore query uses 'id' field, not documentID()
               limit(4)
             );
             const relatedSnap = await getDocs(relatedQuery);
@@ -58,9 +63,13 @@ export default function ProductDetailPage({ params: paramsAsPromise }: { params:
           toast({ title: "Not Found", description: "Product not found.", variant: "destructive" });
           setProduct(null);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error fetching product:", error);
-        toast({ title: "Error", description: "Failed to load product details.", variant: "destructive" });
+        let desc = "Failed to load product details.";
+        if(error.code === 'failed-precondition' && error.message.includes('requires an index')) {
+            desc = "Database setup needed: This query requires a Firestore index. Please check the Firebase console for instructions to create it."
+        }
+        toast({ title: "Error", description: desc, variant: "destructive", duration: 8000 });
         setProduct(null);
       } finally {
         setIsLoading(false);
@@ -68,7 +77,7 @@ export default function ProductDetailPage({ params: paramsAsPromise }: { params:
     };
 
     fetchProductDetails();
-  }, [productId, toast]);
+  }, [productId, toast, resolvedParams]); // Add resolvedParams to dependency
 
   if (isLoading) {
     return (
@@ -119,8 +128,8 @@ export default function ProductDetailPage({ params: paramsAsPromise }: { params:
       </Button>
 
       <Card className="overflow-hidden shadow-xl">
-        <div className="grid md:grid-cols-2 gap-0">
-          <div className="relative aspect-[4/3] md:aspect-auto md:min-h-[400px]">
+        <div className="grid md:grid-cols-2 gap-0"> {/* Consider gap-0 or gap-x-0 depending on design */}
+          <div className="relative aspect-[4/3] md:aspect-auto md:min-h-[400px]"> {/* Or keep aspect-square if preferred */}
             <Image
               src={product.imageUrl || 'https://placehold.co/600x400.png'}
               alt={product.name}
@@ -143,7 +152,7 @@ export default function ProductDetailPage({ params: paramsAsPromise }: { params:
                   {[...Array(Math.floor(product.rating))].map((_, i) => (
                     <Star key={i} size={20} fill="currentColor" />
                   ))}
-                  {product.rating % 1 !== 0 && <Star size={20} />}
+                  {product.rating % 1 !== 0 && <Star size={20} />} {/* For half star representation if needed */}
                   {[...Array(5 - Math.ceil(product.rating))].map((_, i) => (
                     <Star key={`empty-${i}`} size={20} className="text-muted-foreground opacity-50" />
                   ))}
@@ -199,5 +208,3 @@ export default function ProductDetailPage({ params: paramsAsPromise }: { params:
     </div>
   );
 }
-
-    
