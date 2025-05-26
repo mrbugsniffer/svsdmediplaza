@@ -87,9 +87,13 @@ export default function AdminOrderDetailPage() {
         });
         setOrder(prevOrder => prevOrder ? { ...prevOrder, status: selectedStatus! } : null);
         toast({ title: "Status Updated", description: `Order status changed to ${selectedStatus}.`});
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error updating order status:", error);
-        toast({ title: "Error", description: "Failed to update order status.", variant: "destructive" });
+        toast({ 
+            title: "Error Updating Status", 
+            description: error.message || "Failed to update order status. Check permissions.", 
+            variant: "destructive" 
+        });
     } finally {
         setIsUpdatingStatus(false);
     }
@@ -100,7 +104,7 @@ export default function AdminOrderDetailPage() {
       case 'Pending': return 'default';
       case 'Processing': return 'secondary';
       case 'Shipped': return 'outline';
-      case 'Delivered': return 'default';
+      case 'Delivered': return 'default'; // Consider a 'success' variant if available or a green color
       case 'Cancelled': return 'destructive';
       default: return 'default';
     }
@@ -267,5 +271,7 @@ export default function AdminOrderDetailPage() {
     </div>
   );
 }
+
+    
 
     

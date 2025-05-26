@@ -37,7 +37,7 @@ export interface Order {
   status: 'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';
   shippingAddress: ShippingAddress;
   createdAt: any; // Firestore Timestamp
-  // updatedAt?: any; // Optional: Firestore Timestamp for order updates
+  updatedAt?: any; // Optional: Firestore Timestamp for order updates
 }
 
 export interface UserProfile {
@@ -48,3 +48,5 @@ export interface UserProfile {
   createdAt?: any; // Firestore Timestamp
   updatedAt?: any; // Firestore Timestamp
 }
+
+    
