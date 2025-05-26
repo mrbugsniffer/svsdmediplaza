@@ -22,16 +22,16 @@ export default function AdminOrdersPage() {
 
   useEffect(() => {
     const currentUser = auth.currentUser;
-    console.log("AdminOrdersPage: Firebase currentUser on mount:", currentUser?.email); // Diagnostic log
+    console.log("AdminOrdersPage: Firebase currentUser on mount:", currentUser?.email);
     if (currentUser) {
       setIsFirebaseAuthenticated(true);
     } else {
       setIsFirebaseAuthenticated(false);
-      setIsLoading(false); // Not authenticated, so stop loading
+      setIsLoading(false); 
       console.warn("AdminOrdersPage: No Firebase user authenticated. Cannot fetch orders.");
       toast({
         title: "Authentication Required",
-        description: "Admin user not authenticated. Please log in to view orders.",
+        description: "Admin user not authenticated with Firebase. Please re-login to view orders.",
         variant: "destructive",
         duration: 8000
       });
@@ -55,19 +55,22 @@ export default function AdminOrdersPage() {
       setOrders(ordersData);
       setIsLoading(false);
     }, (error: any) => {
+      const currentAuthUser = auth.currentUser; // Get current auth state at the time of error
       console.error("Error fetching orders from Firestore:", error);
+      console.error("AdminOrdersPage: Firebase currentUser at the time of Firestore error:", currentAuthUser?.email, "UID:", currentAuthUser?.uid);
+
       let description = "Failed to fetch orders. ";
       if (error.code === 'permission-denied' || error.message.toLowerCase().includes('insufficient permissions')) {
-        description += "Please check Firestore security rules and ensure the admin user has read access to the 'orders' collection and necessary custom claims if required by rules.";
+        description += "Firestore permission denied. Please check your Firestore security rules. Ensure the admin user has read access to the 'orders' collection. If your rules require an 'admin' custom claim, verify it is correctly set for this user in Firebase Authentication.";
       } else {
         description += error.message;
       }
-      toast({ title: "Error Fetching Orders", description, variant: "destructive", duration: 8000 });
+      toast({ title: "Error Fetching Orders", description, variant: "destructive", duration: 10000 });
       setIsLoading(false);
     });
 
     return () => unsubscribe();
-  }, [toast]); // Removed isFirebaseAuthenticated from dependencies as it's set within this effect
+  }, [toast]); 
 
   const getStatusBadgeVariant = (status: Order['status']) => {
     switch (status) {
