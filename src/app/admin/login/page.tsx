@@ -61,19 +61,21 @@ export default function AdminLoginPage() {
     } catch (firebaseError: any) {
       // Handle Firebase sign-in errors
       console.error("Admin Firebase sign-in error:", firebaseError);
-      let errorMessage = firebaseError.message || "An unknown Firebase error occurred.";
-      // Provide more user-friendly messages for common auth errors
+      let userFriendlyMessage = "An unexpected error occurred during admin login.";
+
       if (firebaseError.code === 'auth/invalid-credential' || 
           firebaseError.code === 'auth/user-not-found' || 
           firebaseError.code === 'auth/wrong-password') {
-        errorMessage = `Invalid credentials for ${ADMIN_EMAIL}. Please check the password. Ensure this account is registered in Firebase Authentication.`;
+        userFriendlyMessage = `Login attempt failed for ${ADMIN_EMAIL}. The email or password provided is incorrect. Please ensure this account is correctly set up in Firebase Authentication and that you are using the right password.`;
       } else if (firebaseError.code === 'auth/too-many-requests') {
-        errorMessage = "Access temporarily disabled due to too many failed login attempts. Please try again later.";
+        userFriendlyMessage = "Access temporarily disabled due to too many failed login attempts. Please try again later.";
+      } else if (firebaseError.message) {
+        userFriendlyMessage = firebaseError.message;
       }
       
       toast({
         title: "Admin Login Failed",
-        description: `Firebase Authentication Error: ${errorMessage}`,
+        description: `Firebase Authentication Error: ${userFriendlyMessage}`,
         variant: "destructive",
         duration: 8000, // Longer duration for important errors
       });
