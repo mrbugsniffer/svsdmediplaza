@@ -4,21 +4,29 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { mockCategories } from '@/lib/mock-data'; // Import mockCategories
+import { mockCategories } from '@/lib/mock-data';
 
 // Define a mapping for categories that have dedicated pages
 const dedicatedCategoryPages: Record<string, string> = {
   "Baby Care": "/category/baby-care",
   "Nutritional Drinks & Supplements": "/category/nutritional-drinks-supplements",
-  "Women Care": "/category/women-care", // Added Women Care dedicated page
+  "Women Care": "/category/women-care",
+  "Personal Care": "/category/personal-care", // Added Personal Care dedicated page
   // Add other categories with dedicated pages here
 };
 
 export function SecondaryNavbar() {
-  const secondaryNavLinks = [
+  const navLinks = [
     { href: '/products', label: 'All Products' },
     ...mockCategories.map(category => {
       const dedicatedPagePath = dedicatedCategoryPages[category];
+      // Map "Vitamins & Supplements" from mock data to "Nutritional Drinks & Supplements" page/label
+      if (category === "Vitamins & Supplements" && dedicatedCategoryPages["Nutritional Drinks & Supplements"]) {
+        return {
+          href: dedicatedCategoryPages["Nutritional Drinks & Supplements"],
+          label: "Nutritional Drinks & Supplements",
+        };
+      }
       return {
         href: dedicatedPagePath || `/products?category=${encodeURIComponent(category)}`,
         label: category,
@@ -26,8 +34,16 @@ export function SecondaryNavbar() {
     })
   ];
 
-  // Filter out the "Others" category link if it exists, as it usually doesn't have a dedicated page or filter view
-  const finalNavLinks = secondaryNavLinks.filter(link => link.label !== "Others");
+  // Filter out duplicates (e.g. if "Nutritional Drinks & Supplements" was already in mockCategories)
+  // and the "Others" category link if it exists.
+  const uniqueLabels = new Set<string>();
+  const finalNavLinks = navLinks.filter(link => {
+    if (link.label === "Others" || uniqueLabels.has(link.label)) {
+      return false;
+    }
+    uniqueLabels.add(link.label);
+    return true;
+  });
 
 
   return (
