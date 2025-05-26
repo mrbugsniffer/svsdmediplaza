@@ -4,9 +4,9 @@
 import { useState, useEffect } from 'react';
 import { ProductCard } from '@/components/products/product-card';
 import { db } from '@/lib/firebase';
-import { collection, query, where, onSnapshot, DocumentData } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, DocumentData, QuerySnapshot } from 'firebase/firestore';
 import type { Product } from '@/types';
-import { Package, Toy } from 'lucide-react'; // Using Toy as a representative icon
+import { Package, Baby } from 'lucide-react'; // Using Baby as a representative icon
 
 export default function BabyCareProductsPage() {
   const [babyCareProducts, setBabyCareProducts] = useState<Product[]>([]);
@@ -38,7 +38,7 @@ export default function BabyCareProductsPage() {
   return (
     <div className="space-y-8">
       <section className="text-center py-8 bg-gradient-to-r from-accent/20 via-secondary/10 to-background rounded-xl shadow-md">
-        <Toy size={48} className="mx-auto text-primary mb-4" />
+        <Baby size={48} className="mx-auto text-primary mb-4" />
         <h1 className="text-3xl md:text-4xl font-bold text-foreground">
           Baby Care Essentials
         </h1>
