@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, ChangeEvent, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -163,8 +163,8 @@ export default function AddProductPage() {
     } catch (error: any) {
       console.error("Error adding product to Firestore:", error);
       let desc = "Could not add product. ";
-       if (error.code === 'permission-denied') {
-        desc += "Firestore permission denied. Ensure the admin user has write permissions for the 'products' collection and appropriate custom claims if required by security rules.";
+      if (error.code === 'permission-denied') {
+        desc += `Firestore permission denied. Ensure the admin user (${ADMIN_EMAIL}) has write permissions for the 'products' collection in your Firestore Security Rules. This often requires the admin user to have an 'admin: true' custom claim set in Firebase Authentication.`;
       } else {
         desc += error.message;
       }
@@ -172,14 +172,14 @@ export default function AddProductPage() {
         title: "Error Adding Product",
         description: desc,
         variant: "destructive",
-        duration: 8000,
+        duration: 10000,
       });
     } finally {
       setIsLoading(false);
     }
   };
   
-  if (!isFirebaseAuthenticatedAdmin && !isLoading) { // Check after initial loading attempt
+  if (!isFirebaseAuthenticatedAdmin && !isLoading) { 
     return (
       <div className="space-y-6 text-center py-10">
          <h1 className="text-2xl font-bold text-destructive">Access Denied</h1>
