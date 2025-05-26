@@ -6,15 +6,15 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 
 const secondaryNavLinks = [
-  { href: '/products', label: 'All Products' }, // Existing products page
-  { href: '#', label: 'Baby Care' },
-  { href: '#', label: 'Nutritional Drinks & Supplements' },
-  { href: '#', label: 'Women Care' },
-  { href: '#', label: 'Personal Care' },
-  { href: '#', label: 'Ayurveda' },
-  { href: '#', label: 'Health Devices' },
-  { href: '#', label: 'Home Essentials' },
-  { href: '#', label: 'Health Condition' },
+  { href: '/products', label: 'All Products' },
+  { href: '/category/baby-care', label: 'Baby Care' }, // Updated href
+  { href: '/products?category=Nutritional%20Drinks%20%26%20Supplements', label: 'Nutritional Drinks & Supplements' },
+  { href: '/products?category=Women%20Care', label: 'Women Care' },
+  { href: '/products?category=Personal%20Care', label: 'Personal Care' },
+  { href: '/products?category=Ayurveda', label: 'Ayurveda' },
+  { href: '/products?category=Health%20Devices', label: 'Health Devices' },
+  { href: '/products?category=Home%20Essentials', label: 'Home Essentials' },
+  { href: '/products?category=Health%20Condition', label: 'Health Condition' },
 ];
 
 export function SecondaryNavbar() {
@@ -40,4 +40,3 @@ export function SecondaryNavbar() {
     </nav>
   );
 }
-
