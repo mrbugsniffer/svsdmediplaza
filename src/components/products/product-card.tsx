@@ -5,8 +5,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import type { Product } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShoppingCart } from 'lucide-react';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { ShoppingCart, Star } from 'lucide-react';
 import { useCart } from '@/hooks/use-cart';
 import { useToast } from "@/hooks/use-toast";
 
@@ -28,6 +28,7 @@ export function ProductCard({ product }: ProductCardProps) {
   };
 
   if (!product) {
+    // Or render a placeholder/skeleton
     return null;
   }
 
@@ -49,23 +50,25 @@ export function ProductCard({ product }: ProductCardProps) {
       </CardHeader>
       <CardContent className="p-1.5 flex-grow flex flex-col">
         <Link href={`/products/${product.id || '#'}`} className="block">
-          <CardTitle className="text-xs font-semibold mb-0.5 hover:text-primary transition-colors line-clamp-1">
+          <CardTitle className="text-sm font-semibold mb-0.5 hover:text-primary transition-colors line-clamp-1">
             {product.name || 'Unnamed Product'}
           </CardTitle>
         </Link>
-        <div className="text-[9px] text-muted-foreground mt-0.5 mb-0.5">
+        {/* Description removed as per previous request */}
+        <div className="text-[10px] text-muted-foreground mt-0.5 mb-0.5">
           <span className="font-medium text-foreground">{product.brand || 'N/A'}</span> - <span className="italic">{product.category || 'N/A'}</span>
         </div>
+        {/* Rating display removed as per previous request */}
         <p className="text-xs font-semibold text-primary mt-auto pt-0.5">
           ₹{product.price ? product.price.toFixed(2) : '0.00'}
         </p>
       </CardContent>
-      <CardFooter className="p-1.5 border-t">
+      <CardFooter className="p-1 border-t">
         <Button
           onClick={handleAddToCart}
           variant="ghost"
           size="sm"
-          className="w-full h-7 text-[10px] text-primary hover:bg-primary/10 hover:text-primary"
+          className="w-full h-6 text-[10px] text-primary hover:bg-primary/10 hover:text-primary"
           disabled={!product.stock || product.stock === 0}
         >
           <ShoppingCart size={10} className="mr-1" />
