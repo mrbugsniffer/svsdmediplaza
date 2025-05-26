@@ -176,9 +176,17 @@ export default function ContactUsPage() {
             <CardTitle className="text-2xl text-foreground">Find Us on the Map</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
-              {/* Replace with an actual map embed (e.g., Google Maps iframe) */}
-              <p className="text-muted-foreground">Map placeholder - embed your map here.</p>
+            <div className="aspect-video rounded-lg overflow-hidden border shadow-sm">
+              <iframe
+                src="https://maps.google.com/maps?width=100%&height=100%&hl=en&q=17.742975,83.1877469+(SREE%20VENKATA%20SAI%20DURGA%20MEDIPLAZA)&ie=UTF8&t=&z=17&iwloc=B&output=embed"
+                width="100%"
+                height="100%"
+                style={{ border:0 }}
+                allowFullScreen={false}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                title="SVSD mediplaza Location"
+              ></iframe>
             </div>
           </CardContent>
         </Card>
