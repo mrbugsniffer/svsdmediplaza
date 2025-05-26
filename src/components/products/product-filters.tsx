@@ -19,8 +19,8 @@ interface ProductFiltersProps {
   filters: Filters;
   setFilters: Dispatch<SetStateAction<Filters>>;
   maxPrice: number;
-  categories: string[]; // Pass categories for dropdown
-  brands: string[];     // Pass brands for dropdown
+  categories: string[]; 
+  brands: string[];     
 }
 
 export function ProductFilters({ filters, setFilters, maxPrice, categories, brands }: ProductFiltersProps) {
@@ -50,25 +50,25 @@ export function ProductFilters({ filters, setFilters, maxPrice, categories, bran
   };
 
   return (
-    <aside className="space-y-4 p-4 bg-card rounded-xl shadow-lg">
-      <h3 className="text-lg font-semibold text-foreground">Filters</h3>
+    <aside className="space-y-3 p-3 bg-card rounded-xl shadow-lg"> {/* Reduced padding and space-y */}
+      <h3 className="text-base font-semibold text-foreground mb-2">Filters</h3> {/* Reduced margin and font size */}
       
       <div>
-        <Label htmlFor="search" className="text-sm font-medium">Search Products</Label>
+        <Label htmlFor="search" className="text-xs font-medium">Search Products</Label> {/* Reduced font size */}
         <Input
           id="search"
           type="text"
-          placeholder="Search by name or description..."
+          placeholder="Search name or description..."
           value={filters.searchQuery}
           onChange={handleSearchChange}
-          className="mt-1 h-9 text-sm"
+          className="mt-1 h-8 text-xs" /* Reduced height and font size */
         />
       </div>
 
       <div>
-        <Label htmlFor="category" className="text-sm font-medium">Category</Label>
+        <Label htmlFor="category" className="text-xs font-medium">Category</Label>
         <Select value={filters.category || 'all'} onValueChange={handleCategoryChange}>
-          <SelectTrigger id="category" className="mt-1 h-9 text-sm">
+          <SelectTrigger id="category" className="mt-1 h-8 text-xs"> {/* Reduced height and font size */}
             <SelectValue placeholder="Select category" />
           </SelectTrigger>
           <SelectContent>
@@ -81,9 +81,9 @@ export function ProductFilters({ filters, setFilters, maxPrice, categories, bran
       </div>
 
       <div>
-        <Label htmlFor="brand" className="text-sm font-medium">Brand</Label>
+        <Label htmlFor="brand" className="text-xs font-medium">Brand</Label>
         <Select value={filters.brand || 'all'} onValueChange={handleBrandChange}>
-          <SelectTrigger id="brand" className="mt-1 h-9 text-sm">
+          <SelectTrigger id="brand" className="mt-1 h-8 text-xs"> {/* Reduced height and font size */}
             <SelectValue placeholder="Select brand" />
           </SelectTrigger>
           <SelectContent>
@@ -96,10 +96,10 @@ export function ProductFilters({ filters, setFilters, maxPrice, categories, bran
       </div>
 
       <div>
-        <Label className="text-sm font-medium">Price Range</Label>
-        <div className="mt-1 flex justify-between text-xs text-muted-foreground">
-          <span>${filters.priceRange[0]}</span>
-          <span>${filters.priceRange[1] > maxPrice ? maxPrice : filters.priceRange[1]}</span>
+        <Label className="text-xs font-medium">Price Range</Label>
+        <div className="mt-1 flex justify-between text-[10px] text-muted-foreground"> {/* Reduced font size */}
+          <span>₹{filters.priceRange[0]}</span>
+          <span>₹{filters.priceRange[1] > maxPrice ? maxPrice : filters.priceRange[1]}</span>
         </div>
         <Slider
           min={0}
@@ -107,12 +107,12 @@ export function ProductFilters({ filters, setFilters, maxPrice, categories, bran
           step={1}
           value={[filters.priceRange[0], filters.priceRange[1] > maxPrice ? maxPrice : filters.priceRange[1]]}
           onValueChange={handlePriceChange}
-          className="mt-2"
+          className="mt-1.5" /* Reduced margin */
           minStepsBetweenThumbs={1}
         />
       </div>
 
-      <Button onClick={resetFilters} variant="outline" size="sm" className="w-full">
+      <Button onClick={resetFilters} variant="outline" size="xs" className="w-full h-8 text-xs"> {/* Custom smaller size */}
         Reset Filters
       </Button>
     </aside>
