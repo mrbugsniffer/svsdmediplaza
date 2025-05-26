@@ -14,7 +14,8 @@ const dedicatedCategoryPages: Record<string, string> = {
   "Personal Care": "/category/personal-care",
   "Skin Care": "/category/skin-care",
   "Pain Relief": "/category/pain-relief",
-  "Cold & Flu": "/category/cold-flu", // Added Cold & Flu dedicated page
+  "Cold & Flu": "/category/cold-flu",
+  "Eye Care": "/category/eye-care", // Added Eye Care dedicated page
   // Add other categories with dedicated pages here
 };
 
@@ -24,6 +25,7 @@ export function SecondaryNavbar() {
     ...mockCategories.map(category => {
       const dedicatedPagePath = dedicatedCategoryPages[category];
       // Map "Vitamins & Supplements" from mockCategories to the "Nutritional Drinks & Supplements" page and label
+      // This mapping is no longer strictly needed as we updated mockCategories, but kept for robustness.
       const label = category === "Vitamins & Supplements" ? "Nutritional Drinks & Supplements" : category;
       
       return {
@@ -33,15 +35,19 @@ export function SecondaryNavbar() {
     })
   ];
 
-  // Filter out duplicates (e.g. if "Nutritional Drinks & Supplements" was already in mockCategories)
-  // and the "Others" category link if it exists.
   const uniqueLabels = new Set<string>();
   const finalNavLinks = navLinks.filter(link => {
     if (link.label === "Others" || uniqueLabels.has(link.label)) {
-      // Special handling if "Nutritional Drinks & Supplements" might be duplicated due to mapping
+      // Handle specific case for Nutritional Drinks if it was mapped from Vitamins & Supplements
+      // and also existed as "Nutritional Drinks & Supplements" in mockCategories.
       if (link.label === "Nutritional Drinks & Supplements" && uniqueLabels.has(link.label)) {
+        // Only allow it once. If the dedicated page is `/category/nutritional-drinks-supplements`,
+        // and this link also points there, it's a duplicate.
+        // This logic might need refinement based on exact mockCategories content if duplicates are complex.
+        // For now, simple label check.
         return false;
       }
+      // General duplicate label check
       if (link.label !== "Nutritional Drinks & Supplements" && uniqueLabels.has(link.label)) {
           return false;
       }
