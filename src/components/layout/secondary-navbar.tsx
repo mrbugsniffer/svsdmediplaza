@@ -7,8 +7,8 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 
 const secondaryNavLinks = [
   { href: '/products', label: 'All Products' },
-  { href: '/category/baby-care', label: 'Baby Care' }, // Updated href
-  { href: '/products?category=Nutritional%20Drinks%20%26%20Supplements', label: 'Nutritional Drinks & Supplements' },
+  { href: '/category/baby-care', label: 'Baby Care' },
+  { href: '/category/nutritional-drinks-supplements', label: 'Nutritional Drinks & Supplements' }, // Updated href
   { href: '/products?category=Women%20Care', label: 'Women Care' },
   { href: '/products?category=Personal%20Care', label: 'Personal Care' },
   { href: '/products?category=Ayurveda', label: 'Ayurveda' },
