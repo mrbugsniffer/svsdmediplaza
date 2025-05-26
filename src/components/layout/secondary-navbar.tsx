@@ -13,7 +13,8 @@ const dedicatedCategoryPages: Record<string, string> = {
   "Women Care": "/category/women-care",
   "Personal Care": "/category/personal-care",
   "Skin Care": "/category/skin-care",
-  "Pain Relief": "/category/pain-relief", // Added Pain Relief dedicated page
+  "Pain Relief": "/category/pain-relief",
+  "Cold & Flu": "/category/cold-flu", // Added Cold & Flu dedicated page
   // Add other categories with dedicated pages here
 };
 
@@ -37,7 +38,13 @@ export function SecondaryNavbar() {
   const uniqueLabels = new Set<string>();
   const finalNavLinks = navLinks.filter(link => {
     if (link.label === "Others" || uniqueLabels.has(link.label)) {
-      return false;
+      // Special handling if "Nutritional Drinks & Supplements" might be duplicated due to mapping
+      if (link.label === "Nutritional Drinks & Supplements" && uniqueLabels.has(link.label)) {
+        return false;
+      }
+      if (link.label !== "Nutritional Drinks & Supplements" && uniqueLabels.has(link.label)) {
+          return false;
+      }
     }
     uniqueLabels.add(link.label);
     return true;
