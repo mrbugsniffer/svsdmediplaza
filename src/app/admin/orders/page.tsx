@@ -2,25 +2,38 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { db, auth } from '@/lib/firebase'; 
-import { collection, onSnapshot, query, orderBy, DocumentData, Timestamp } from 'firebase/firestore';
+import { db, auth } from '@/lib/firebase';
+import { collection, onSnapshot, query, orderBy, DocumentData, Timestamp, deleteDoc, doc } from 'firebase/firestore';
 import type { Order } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Eye, ShoppingCart, PackageSearch } from 'lucide-react';
+import { Eye, ShoppingCart, PackageSearch, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
-const ADMIN_EMAIL = 'admin@gmail.com'; 
+const ADMIN_EMAIL = 'admin@gmail.com';
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFirebaseAuthenticatedAdmin, setIsFirebaseAuthenticatedAdmin] = useState(false);
   const { toast } = useToast();
+  const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
 
   useEffect(() => {
     const currentUser = auth.currentUser;
@@ -29,14 +42,14 @@ export default function AdminOrdersPage() {
       setIsFirebaseAuthenticatedAdmin(true);
     } else {
       setIsFirebaseAuthenticatedAdmin(false);
-      setIsLoading(false); 
+      setIsLoading(false);
       toast({
         title: "Authentication Error",
         description: "Admin user not authenticated with Firebase. Please re-login to view orders.",
         variant: "destructive",
         duration: 8000
       });
-      return; 
+      return;
     }
 
     setIsLoading(true);
@@ -63,7 +76,7 @@ export default function AdminOrdersPage() {
 
       let description = "Failed to fetch orders. ";
       if (error.code === 'permission-denied' || error.message.toLowerCase().includes('insufficient permissions')) {
-        description += "Firestore permission denied. ";
+        description += `Firestore permission denied. `;
         if (currentAuthUser?.email === ADMIN_EMAIL) {
             description += `Ensure the admin user (${ADMIN_EMAIL}) has the necessary 'admin: true' custom claim set in Firebase Authentication, as this is likely required by your security rules for listing all orders. Custom claims are not set by the frontend login. Check Firestore rules in Firebase Console.`;
         } else {
@@ -77,14 +90,56 @@ export default function AdminOrdersPage() {
     });
 
     return () => unsubscribe();
-  }, [toast]); 
+  }, [toast]);
+
+  const confirmDeleteOrder = (order: Order) => {
+    if (!isFirebaseAuthenticatedAdmin) {
+      toast({ title: "Action Denied", description: "Admin not authenticated. Cannot delete order.", variant: "destructive"});
+      return;
+    }
+    setOrderToDelete(order);
+  };
+
+  const handleDeleteOrder = async () => {
+    if (!orderToDelete || !isFirebaseAuthenticatedAdmin) {
+        toast({ title: "Action Denied", description: "Admin not authenticated or no order selected. Cannot delete.", variant: "destructive"});
+        setOrderToDelete(null);
+        return;
+    }
+    setIsDeleting(true);
+    try {
+      await deleteDoc(doc(db, 'orders', orderToDelete.id));
+      toast({
+        title: "Order Deleted",
+        description: `Order ID ${orderToDelete.id.substring(0,8)}... has been successfully deleted.`,
+      });
+    } catch (error: any) {
+      console.error("Error deleting order from Firestore:", error);
+      let desc = "Could not delete order. ";
+       if (error.code === 'permission-denied') {
+        desc += `Firestore permission denied. Ensure the admin user (${ADMIN_EMAIL}) has delete permissions for the 'orders' collection and appropriate custom claims if required by security rules.`;
+      } else {
+        desc += error.message;
+      }
+      toast({
+        title: "Error Deleting Order",
+        description: desc,
+        variant: "destructive",
+        duration: 8000,
+      });
+    } finally {
+      setOrderToDelete(null);
+      setIsDeleting(false);
+    }
+  };
+
 
   const getStatusBadgeVariant = (status: Order['status']) => {
     switch (status) {
       case 'Pending': return 'default';
       case 'Processing': return 'secondary';
       case 'Shipped': return 'outline';
-      case 'Delivered': return 'default'; 
+      case 'Delivered': return 'default';
       case 'Cancelled': return 'destructive';
       default: return 'default';
     }
@@ -152,12 +207,24 @@ export default function AdminOrdersPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-center">
-                        <Button variant="outline" size="icon" asChild className="hover:text-primary hover:border-primary">
-                          <Link href={`/admin/orders/${order.id}`}>
-                            <Eye size={16} />
-                            <span className="sr-only">View Order {order.id}</span>
-                          </Link>
-                        </Button>
+                        <div className="flex justify-center gap-2">
+                            <Button variant="outline" size="icon" asChild className="hover:text-primary hover:border-primary">
+                            <Link href={`/admin/orders/${order.id}`}>
+                                <Eye size={16} />
+                                <span className="sr-only">View Order {order.id}</span>
+                            </Link>
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => confirmDeleteOrder(order)}
+                                className="text-destructive hover:text-destructive hover:border-destructive/50"
+                                disabled={isDeleting && orderToDelete?.id === order.id}
+                            >
+                                <Trash2 size={16} />
+                                <span className="sr-only">Delete Order {order.id}</span>
+                            </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   )) : (
@@ -174,6 +241,25 @@ export default function AdminOrdersPage() {
           </div>
         </CardContent>
       </Card>
+
+       <AlertDialog open={!!orderToDelete} onOpenChange={(open) => !open && setOrderToDelete(null)}>
+            <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the order
+                "{orderToDelete?.id.substring(0,8)}...".
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setOrderToDelete(null)} disabled={isDeleting}>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteOrder} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
+                {isDeleting ? 'Deleting...' : 'Yes, delete order'}
+                </AlertDialogAction>
+            </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+
     </div>
   );
 }
