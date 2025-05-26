@@ -38,45 +38,44 @@ export default function WomenCareProductsPage() {
   }, [categoryName]);
 
   return (
-    <div className="space-y-8">
-      <section className="text-center py-8 bg-gradient-to-r from-pink-100 via-purple-50 to-background rounded-xl shadow-md">
-        <HeartHandshake size={48} className="mx-auto text-pink-500 mb-4" />
-        <h1 className="text-3xl md:text-4xl font-bold text-foreground">
+    <div className="space-y-6"> {/* Reduced overall vertical spacing */}
+      <section className="text-center py-6 bg-gradient-to-r from-pink-100 via-purple-50 to-background rounded-xl shadow-md"> {/* Reduced vertical padding */}
+        <HeartHandshake size={36} className="mx-auto text-pink-500 mb-3" /> {/* Reduced icon size and margin */}
+        <h1 className="text-2xl md:text-3xl font-bold text-foreground"> {/* Reduced heading size */}
           {categoryName} Products
         </h1>
-        <p className="text-md text-muted-foreground mt-2">
+        <p className="text-sm text-muted-foreground mt-2"> {/* Reduced paragraph text size */}
           Dedicated products for women's health and wellness.
         </p>
       </section>
 
       {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-card rounded-xl shadow-lg p-2 animate-pulse h-[280px] sm:h-[300px]">
-              <div className="aspect-square bg-muted rounded mb-2"></div>
-              <div className="h-4 bg-muted rounded w-3/4 mb-1"></div>
-              <div className="h-3 bg-muted rounded w-1/2 mb-1"></div>
-              <div className="h-3 bg-muted rounded w-1/3 mb-1.5"></div>
-              <div className="h-6 bg-muted rounded w-full"></div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3"> {/* Adjusted skeleton to match 5 cols, reduced grid gap */}
+          {[...Array(5)].map((_, i) => ( // Show 5 skeletons for xl view
+             <div key={i} className="bg-card rounded-md shadow-sm p-1.5 animate-pulse flex flex-col h-[220px] sm:h-[240px]"> {/* Adjusted skeleton height and structure */}
+              <div className="aspect-square bg-muted rounded-sm mb-1 w-full"></div>
+              <div className="h-3 bg-muted rounded w-3/4 mb-1"></div> {/* Skeleton for Name */}
+              <div className="h-3 bg-muted rounded w-1/2 mb-1.5"></div> {/* Skeleton for Price */}
+              <div className="h-5 bg-muted rounded w-full mt-auto"></div> {/* Skeleton for Button */}
             </div>
           ))}
         </div>
       ) : error ? (
-        <div className="text-center py-10 text-destructive">
-          <Package size={48} className="mx-auto mb-4" />
-          <h3 className="text-2xl font-semibold mb-2">Error Loading Products</h3>
+        <div className="text-center py-8 text-destructive"> {/* Adjusted vertical padding */}
+          <Package size={36} className="mx-auto mb-3" /> {/* Reduced icon size and margin */}
+          <h3 className="text-xl font-semibold mb-2">Error Loading Products</h3> {/* Reduced heading size */}
           <p>{error}</p>
         </div>
       ) : womenCareProducts.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3"> {/* Ensure 5 columns on xl, reduced gap */}
           {womenCareProducts.map(product => (
             <ProductCard key={product.id} product={product} />
           ))}
         </div>
       ) : (
-        <div className="text-center py-10 text-muted-foreground">
-          <Package size={48} className="mx-auto mb-4" />
-          <h3 className="text-2xl font-semibold mb-2">No Products Found in {categoryName}</h3>
+        <div className="text-center py-8 text-muted-foreground"> {/* Adjusted vertical padding */}
+          <Package size={36} className="mx-auto mb-3" /> {/* Reduced icon size and margin */}
+          <h3 className="text-xl font-semibold mb-2">No Products Found in {categoryName}</h3> {/* Reduced heading size */}
           <p>We couldn&apos;t find any products in this category at the moment.</p>
         </div>
       )}
