@@ -5,8 +5,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import type { Product } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ShoppingCart, Star } from 'lucide-react';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { ShoppingCart } from 'lucide-react';
 import { useCart } from '@/hooks/use-cart';
 import { useToast } from "@/hooks/use-toast";
 
@@ -28,7 +28,6 @@ export function ProductCard({ product }: ProductCardProps) {
   };
 
   if (!product) {
-    // Or render a placeholder/skeleton
     return null;
   }
 
@@ -54,11 +53,7 @@ export function ProductCard({ product }: ProductCardProps) {
             {product.name || 'Unnamed Product'}
           </CardTitle>
         </Link>
-        {/* Description removed as per previous request */}
-        <div className="text-[10px] text-muted-foreground mt-0.5 mb-0.5">
-          <span className="font-medium text-foreground">{product.brand || 'N/A'}</span> - <span className="italic">{product.category || 'N/A'}</span>
-        </div>
-        {/* Rating display removed as per previous request */}
+        {/* Brand and Category display removed */}
         <p className="text-xs font-semibold text-primary mt-auto pt-0.5">
           ₹{product.price ? product.price.toFixed(2) : '0.00'}
         </p>
