@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase'; // Import auth
 import { collection, onSnapshot, query, orderBy, DocumentData, Timestamp } from 'firebase/firestore';
 import type { Order } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,18 +11,30 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Eye, ShoppingCart, PackageSearch } from 'lucide-react';
 import Link from 'next/link';
-import { format } from 'date-fns'; // For formatting timestamp
+import { format } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isFirebaseAuthenticated, setIsFirebaseAuthenticated] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      setIsFirebaseAuthenticated(true);
+    } else {
+      setIsFirebaseAuthenticated(false);
+      setIsLoading(false); // Not authenticated, so stop loading
+      // Potentially redirect or show an error, though AdminLayout should handle this
+      console.warn("AdminOrdersPage: No Firebase user authenticated.");
+      return;
+    }
+
     setIsLoading(true);
     const ordersCollectionRef = collection(db, 'orders');
-    const q = query(ordersCollectionRef, orderBy('createdAt', 'desc')); // Order by creation time, newest first
+    const q = query(ordersCollectionRef, orderBy('createdAt', 'desc'));
 
     const unsubscribe = onSnapshot(q, (snapshot: DocumentData) => {
       const ordersData = snapshot.docs.map((doc: DocumentData) => {
@@ -30,7 +42,6 @@ export default function AdminOrdersPage() {
         return {
           id: doc.id,
           ...data,
-          // Ensure orderDate and createdAt are usable, convert if they are Firestore Timestamps
           orderDate: data.orderDate?.toDate ? data.orderDate.toDate() : new Date(data.orderDate),
           createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt),
         } as Order;
@@ -39,24 +50,39 @@ export default function AdminOrdersPage() {
       setIsLoading(false);
     }, (error: any) => {
       console.error("Error fetching orders from Firestore:", error);
-      toast({ title: "Error", description: "Failed to fetch orders. " + error.message, variant: "destructive" });
+      let description = "Failed to fetch orders. ";
+      if (error.code === 'permission-denied' || error.message.toLowerCase().includes('insufficient permissions')) {
+        description += "Please check Firestore security rules and ensure the admin user has read access to the 'orders' collection and necessary custom claims if required by rules.";
+      } else {
+        description += error.message;
+      }
+      toast({ title: "Error Fetching Orders", description, variant: "destructive", duration: 8000 });
       setIsLoading(false);
     });
 
-    return () => unsubscribe(); // Cleanup listener on component unmount
+    return () => unsubscribe();
   }, [toast]);
 
   const getStatusBadgeVariant = (status: Order['status']) => {
     switch (status) {
-      case 'Pending': return 'default'; // Using primary color for pending
+      case 'Pending': return 'default';
       case 'Processing': return 'secondary';
-      case 'Shipped': return 'outline'; // Visually distinct for shipped
-      case 'Delivered': return 'default'; // Similar to success, maybe a green custom variant later
+      case 'Shipped': return 'outline';
+      case 'Delivered': return 'default'; // Consider a 'success' variant
       case 'Cancelled': return 'destructive';
       default: return 'default';
     }
   };
 
+  if (!isFirebaseAuthenticated && !isLoading) {
+    return (
+      <div className="space-y-6 text-center py-10">
+         <h1 className="text-2xl font-bold text-destructive">Authentication Error</h1>
+         <p className="text-muted-foreground">Admin user is not authenticated with Firebase. Please re-login.</p>
+         <Button asChild><Link href="/admin/login">Go to Admin Login</Link></Button>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -65,18 +91,16 @@ export default function AdminOrdersPage() {
           <h1 className="text-3xl font-bold text-foreground">Manage Orders</h1>
           <p className="text-muted-foreground">View and manage customer orders.</p>
         </div>
-        {/* Add "Create Order" button or other actions if needed later */}
       </div>
 
       <Card className="shadow-md">
         <CardHeader>
           <CardTitle>Order List</CardTitle>
           <CardDescription>
-            Displaying {orders.length} most recent orders.
+            {isLoading ? "Loading orders..." : `Displaying ${orders.length} most recent order(s).`}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Add search/filter controls here later if needed */}
           <div className="overflow-auto">
             {isLoading ? (
               <div className="flex justify-center items-center py-10">
@@ -113,20 +137,18 @@ export default function AdminOrdersPage() {
                       </TableCell>
                       <TableCell className="text-center">
                         <Button variant="outline" size="icon" asChild className="hover:text-primary hover:border-primary">
-                          {/* Link to a detailed order view page (to be created) */}
                           <Link href={`/admin/orders/${order.id}`}>
                             <Eye size={16} />
                             <span className="sr-only">View Order {order.id}</span>
                           </Link>
                         </Button>
-                        {/* Add more actions like "Update Status" later */}
                       </TableCell>
                     </TableRow>
                   )) : (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center h-24">
                         <PackageSearch size={32} className="mx-auto mb-2 text-muted-foreground"/>
-                        No orders found.
+                        No orders found. This could be due to no orders being placed, or permission issues.
                       </TableCell>
                     </TableRow>
                   )}
