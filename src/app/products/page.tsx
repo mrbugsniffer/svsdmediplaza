@@ -23,8 +23,7 @@ const INITIAL_MAX_PRICE = 500;
 export default function ProductsPage() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [maxPrice, setMaxPrice] = useState(INITIAL_MAX_PRICE);
-  const searchParamsPromise = useSearchParams(); // Get the promise-like searchParams
-  const resolvedSearchParams = use(searchParamsPromise); // Unwrap with React.use()
+  const searchParams = useSearchParams(); // Get searchParams directly
 
   const [filters, setFilters] = useState<Filters>({
     category: '',
@@ -39,11 +38,11 @@ export default function ProductsPage() {
 
   useEffect(() => {
     setIsClient(true);
-    const categoryFromUrl = resolvedSearchParams.get('category');
+    const categoryFromUrl = searchParams.get('category');
     if (categoryFromUrl) {
       setFilters(prevFilters => ({ ...prevFilters, category: categoryFromUrl }));
     }
-  }, [resolvedSearchParams]); // Depend on resolvedSearchParams
+  }, [searchParams]); // Depend on searchParams
 
   const isMobile = useIsMobile();
 
@@ -128,15 +127,15 @@ export default function ProductsPage() {
 
   if (!isClient) {
     return (
-      <div className="flex flex-col lg:flex-row gap-6">
+      <div className="flex flex-col lg:flex-row gap-8">
         <div className="w-full lg:w-1/4 animate-pulse">
-          <div className="p-4 bg-card rounded-xl shadow-lg h-96"></div>
+          <div className="p-6 bg-card rounded-xl shadow-lg h-96"></div>
         </div>
         <div className="w-full lg:w-3/4">
           <div className="h-10 bg-muted rounded w-1/3 mb-6 animate-pulse"></div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {[...Array(8)].map((_, i) => (
-              <div key={i} className="bg-card rounded-xl shadow-lg p-2 animate-pulse h-60"></div>
+              <div key={i} className="bg-card rounded-xl shadow-lg p-4 animate-pulse h-72"></div>
             ))}
           </div>
         </div>
