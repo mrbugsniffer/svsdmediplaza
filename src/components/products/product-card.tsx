@@ -28,7 +28,7 @@ export function ProductCard({ product }: ProductCardProps) {
   };
 
   if (!product) {
-    return null; // Or a placeholder/loading state
+    return null;
   }
 
   return (
@@ -56,12 +56,11 @@ export function ProductCard({ product }: ProductCardProps) {
         <div className="text-[9px] text-muted-foreground mt-0.5 mb-0.5">
           <span className="font-medium text-foreground">{product.brand || 'N/A'}</span> - <span className="italic">{product.category || 'N/A'}</span>
         </div>
-        {/* Rating functionality removed */}
         <p className="text-xs font-semibold text-primary mt-auto pt-0.5">
           ₹{product.price ? product.price.toFixed(2) : '0.00'}
         </p>
       </CardContent>
-      <CardFooter className="p-1 border-t">
+      <CardFooter className="p-1.5 border-t">
         <Button
           onClick={handleAddToCart}
           variant="ghost"

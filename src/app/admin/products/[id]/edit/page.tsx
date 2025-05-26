@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from '@/components/ui/checkbox';
-import { mockBrands } from '@/lib/mock-data'; // Categories are now free-text
+import { mockBrands } from '@/lib/mock-data'; 
 import Link from 'next/link';
 import { ChevronLeft, Package, UploadCloud, Edit3Icon } from 'lucide-react';
 import { db, auth } from '@/lib/firebase';
@@ -31,7 +31,7 @@ interface ProductFormData {
   stock: string;
   imageUrl: string;
   featured: boolean;
-  rating?: string;
+  // rating?: string; // Removed rating
 }
 
 export default function EditProductPage({ params: paramsAsPromise }: { params: { id?: string } }) {
@@ -84,7 +84,7 @@ export default function EditProductPage({ params: paramsAsPromise }: { params: {
               stock: productData.stock.toString(),
               imageUrl: productData.imageUrl || '',
               featured: productData.featured || false,
-              rating: productData.rating?.toString() || '',
+              // rating: productData.rating?.toString() || '', // Removed rating
             };
             setFormData(fetchedFormData);
             setOriginalProductName(productData.name);
@@ -213,7 +213,7 @@ export default function EditProductPage({ params: paramsAsPromise }: { params: {
         ...formData, 
         price: parseFloat(formData.price),
         stock: parseInt(formData.stock, 10),
-        rating: formData.rating ? parseFloat(formData.rating) : null,
+        // rating: formData.rating ? parseFloat(formData.rating) : null, // Removed rating
         updatedAt: serverTimestamp(),
       });
 
@@ -364,10 +364,7 @@ export default function EditProductPage({ params: paramsAsPromise }: { params: {
                  </div>
             )}
 
-             <div className="space-y-2">
-              <Label htmlFor="rating">Rating (Optional, 1-5)</Label>
-              <Input id="rating" name="rating" type="number" step="0.1" min="1" max="5" value={formData.rating || ''} onChange={handleFormInputChange} disabled={isSubmitting} />
-            </div>
+            {/* Rating input removed */}
             <div className="flex items-center space-x-2">
                 <Checkbox id="featured" name="featured" checked={formData.featured} onCheckedChange={(checked) => setFormData(prev => prev ? { ...prev, featured: Boolean(checked) } : null)} disabled={isSubmitting} />
                 <Label htmlFor="featured" className="font-normal">Mark as Featured Product</Label>
@@ -387,5 +384,3 @@ export default function EditProductPage({ params: paramsAsPromise }: { params: {
     </div>
   );
 }
-
-    

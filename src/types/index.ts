@@ -9,7 +9,7 @@ export interface Product {
   brand: string;
   featured?: boolean;
   stock: number;
-  rating?: number; // Optional rating 1-5
+  // rating?: number; // Removed rating
   createdAt?: any; // Firestore Timestamp
   updatedAt?: any; // Firestore Timestamp
 }
@@ -48,5 +48,3 @@ export interface UserProfile {
   createdAt?: any; // Firestore Timestamp
   updatedAt?: any; // Firestore Timestamp
 }
-
-    

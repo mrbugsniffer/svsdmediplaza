@@ -16,14 +16,14 @@ import { mockCategories, mockBrands } from '@/lib/mock-data';
 import { useToast } from "@/hooks/use-toast";
 import { useSearchParams } from 'next/navigation';
 
-type SortOption = 'price-asc' | 'price-desc' | 'name-asc' | 'name-desc' | 'featured' | 'rating';
+type SortOption = 'price-asc' | 'price-desc' | 'name-asc' | 'name-desc' | 'featured'; // Removed 'rating'
 
-const INITIAL_MAX_PRICE = 500; // Default initial max price
+const INITIAL_MAX_PRICE = 500; 
 
 export default function ProductsPage() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [maxPrice, setMaxPrice] = useState(INITIAL_MAX_PRICE);
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams(); 
 
   const [filters, setFilters] = useState<Filters>({
     category: '',
@@ -38,7 +38,6 @@ export default function ProductsPage() {
 
   useEffect(() => {
     setIsClient(true);
-    // No React.use() needed for useSearchParams() here
     const categoryFromUrl = searchParams.get('category');
     if (categoryFromUrl) {
       setFilters(prevFilters => ({ ...prevFilters, category: categoryFromUrl }));
@@ -61,8 +60,6 @@ export default function ProductsPage() {
       if (productsData.length > 0) {
         const newMaxPrice = Math.max(...productsData.map(p => p.price).filter(p => typeof p === 'number'), INITIAL_MAX_PRICE);
         setMaxPrice(newMaxPrice);
-        // Update priceRange filter only if the current max is lower than newMaxPrice
-        // or if it's still at the initial default, to avoid overriding user's selection unnecessarily.
         setFilters(prevFilters => ({
             ...prevFilters,
             priceRange: [prevFilters.priceRange[0], Math.max(prevFilters.priceRange[1] === INITIAL_MAX_PRICE ? newMaxPrice : prevFilters.priceRange[1], newMaxPrice)]
@@ -71,7 +68,7 @@ export default function ProductsPage() {
         setMaxPrice(INITIAL_MAX_PRICE);
          setFilters(prevFilters => ({
             ...prevFilters,
-            priceRange: [0, INITIAL_MAX_PRICE] // Reset to default if no products
+            priceRange: [0, INITIAL_MAX_PRICE] 
         }));
       }
       setIsLoading(false);
@@ -120,9 +117,9 @@ export default function ProductsPage() {
       case 'name-desc':
         products.sort((a, b) => b.name.localeCompare(a.name));
         break;
-      case 'rating':
-        products.sort((a,b) => (b.rating || 0) - (a.rating || 0));
-        break;
+      // case 'rating': // Removed rating sort
+      //   products.sort((a,b) => (b.rating || 0) - (a.rating || 0));
+      //   break;
       case 'featured':
       default:
         products.sort((a,b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0) || a.name.localeCompare(b.name));
@@ -132,7 +129,6 @@ export default function ProductsPage() {
   }, [allProducts, filters, sortOption]);
 
   if (!isClient) {
-    // Basic skeleton for SSR or initial load before client takes over
     return (
       <div className="flex flex-col lg:flex-row gap-4">
         <div className="w-full lg:w-1/4 animate-pulse">
@@ -140,7 +136,7 @@ export default function ProductsPage() {
         </div>
         <div className="w-full lg:w-3/4">
           <div className="h-8 bg-muted rounded w-1/3 mb-4 animate-pulse"></div>
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {[...Array(8)].map((_, i) => (
               <div key={i} className="bg-card rounded-xl shadow-lg p-2 animate-pulse h-60"></div>
             ))}
@@ -173,7 +169,7 @@ export default function ProductsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="featured">Featured</SelectItem>
-                    <SelectItem value="rating">Top Rated</SelectItem>
+                    {/* <SelectItem value="rating">Top Rated</SelectItem> */} {/* Removed rating sort */}
                     <SelectItem value="price-asc">Price: Low to High</SelectItem>
                     <SelectItem value="price-desc">Price: High to Low</SelectItem>
                     <SelectItem value="name-asc">Name: A to Z</SelectItem>
@@ -192,16 +188,16 @@ export default function ProductsPage() {
 
         <div className="w-full lg:w-3/4">
           {!isMobile && (
-            <div className="flex flex-col sm:flex-row justify-between items-center mb-3 gap-2 p-2 bg-card rounded-lg shadow-sm">
+            <div className="flex flex-col sm:flex-row justify-between items-center mb-3 gap-2 p-3 bg-card rounded-lg shadow-sm">
               <p className="text-muted-foreground text-xs">Showing {filteredProducts.length} of {allProducts.length} products</p>
               <div className="flex items-center gap-2">
                   <Select value={sortOption} onValueChange={(value) => setSortOption(value as SortOption)}>
-                    <SelectTrigger className="w-[150px] h-8 text-xs">
+                    <SelectTrigger className="w-[150px] h-9 text-xs">
                       <SelectValue placeholder="Sort by" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="featured">Featured</SelectItem>
-                      <SelectItem value="rating">Top Rated</SelectItem>
+                      {/* <SelectItem value="rating">Top Rated</SelectItem> */} {/* Removed rating sort */}
                       <SelectItem value="price-asc">Price: Low to High</SelectItem>
                       <SelectItem value="price-desc">Price: High to Low</SelectItem>
                       <SelectItem value="name-asc">Name: A to Z</SelectItem>
@@ -218,7 +214,7 @@ export default function ProductsPage() {
                 <p className="text-lg text-muted-foreground">Loading products...</p>
             </div>
           ) : filteredProducts.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"> {/* Reduced gap */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"> 
               {filteredProducts.map(product => (
                 <ProductCard key={product.id} product={product} />
               ))}

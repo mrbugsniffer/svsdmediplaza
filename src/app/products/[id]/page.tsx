@@ -6,7 +6,7 @@ import Image from 'next/image';
 import type { Product } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { ChevronLeft, ShoppingCart, Star, Minus, Plus, Package } from 'lucide-react';
+import { ChevronLeft, ShoppingCart, Minus, Plus, Package } from 'lucide-react';
 import Link from 'next/link';
 import { useCart } from '@/hooks/use-cart';
 import { useToast } from "@/hooks/use-toast";
@@ -50,7 +50,8 @@ export default function ProductDetailPage({ params: paramsAsPromise }: { params:
             const relatedQuery = query(
               productsCollectionRef,
               where('category', '==', fetchedProductData.category),
-              limit(5) 
+              where('id', '!=', fetchedProductData.id),
+              limit(4) 
             );
             const relatedSnap = await getDocs(relatedQuery);
             const related = relatedSnap.docs
@@ -153,18 +154,7 @@ export default function ProductDetailPage({ params: paramsAsPromise }: { params:
                 {product.category && <Badge variant="secondary">{product.category}</Badge>}
                 {product.brand && <Badge variant="outline">{product.brand}</Badge>}
               </div>
-              {product.rating && product.rating > 0 && (
-                <div className="flex items-center gap-1 text-amber-500 mt-3">
-                  {[...Array(Math.floor(product.rating))].map((_, i) => (
-                    <Star key={i} size={20} fill="currentColor" />
-                  ))}
-                  {product.rating % 1 !== 0 && <Star size={20} />} 
-                  {[...Array(5 - Math.ceil(product.rating))].map((_, i) => (
-                    <Star key={`empty-${i}`} size={20} className="text-muted-foreground opacity-50" />
-                  ))}
-                  <span className="text-sm text-muted-foreground ml-1">({product.rating.toFixed(1)} from reviews)</span>
-                </div>
-              )}
+              {/* Rating display removed */}
             </CardHeader>
             <CardContent className="p-6 md:p-8 flex-grow">
               <CardDescription className="text-base text-muted-foreground leading-relaxed">{product.description}</CardDescription>
@@ -214,5 +204,3 @@ export default function ProductDetailPage({ params: paramsAsPromise }: { params:
     </div>
   );
 }
-
-    

@@ -11,14 +11,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { mockCategories, mockBrands } from '@/lib/mock-data';
+import { mockBrands } from '@/lib/mock-data';
 import Link from 'next/link';
 import { ChevronLeft, UploadCloud, PackagePlus } from 'lucide-react';
-import { db, auth } from '@/lib/firebase'; // Import auth
+import { db, auth } from '@/lib/firebase'; 
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import Image from 'next/image';
 
-const ADMIN_EMAIL = 'admin@gmail.com'; // Define admin email constant
+const ADMIN_EMAIL = 'admin@gmail.com'; 
 
 interface ProductFormData {
   name: string;
@@ -29,7 +29,7 @@ interface ProductFormData {
   stock: string;
   imageUrl: string;
   featured: boolean;
-  rating?: string;
+  // rating?: string; // Removed rating
 }
 
 export default function AddProductPage() {
@@ -44,7 +44,7 @@ export default function AddProductPage() {
     stock: '',
     imageUrl: '',
     featured: false,
-    rating: '',
+    // rating: '', // Removed rating
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isFirebaseAuthenticatedAdmin, setIsFirebaseAuthenticatedAdmin] = useState(false);
@@ -63,8 +63,6 @@ export default function AddProductPage() {
         description: "Admin user not authenticated. You cannot add products.",
         variant: "destructive",
       });
-      // Optionally redirect if not admin
-      // router.push('/admin/login'); 
     }
   }, [toast, router]);
 
@@ -121,7 +119,7 @@ export default function AddProductPage() {
     }
   };
 
-  const handleSelectChange = (name: 'category' | 'brand') => (value: string) => {
+  const handleSelectChange = (name: 'brand') => (value: string) => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
@@ -150,7 +148,7 @@ export default function AddProductPage() {
         ...formData,
         price: parseFloat(formData.price),
         stock: parseInt(formData.stock, 10),
-        rating: formData.rating ? parseFloat(formData.rating) : null,
+        // rating: formData.rating ? parseFloat(formData.rating) : null, // Removed rating
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -164,7 +162,7 @@ export default function AddProductPage() {
       console.error("Error adding product to Firestore:", error);
       let desc = "Could not add product. ";
       if (error.code === 'permission-denied') {
-        desc += `Firestore permission denied. Ensure the admin user (${ADMIN_EMAIL}) has write permissions for the 'products' collection in your Firestore Security Rules. This often requires the admin user to have an 'admin: true' custom claim set in Firebase Authentication.`;
+        desc += `Firestore permission denied. Ensure the admin user (${ADMIN_EMAIL}) has write permissions for the 'products' collection and the necessary 'admin: true' custom claim.`;
       } else {
         desc += error.message;
       }
@@ -230,12 +228,7 @@ export default function AddProductPage() {
             <div className="grid sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                     <Label htmlFor="category">Category</Label>
-                    <Select name="category" onValueChange={handleSelectChange('category')} value={formData.category} disabled={isLoading} required>
-                        <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
-                        <SelectContent>
-                            {mockCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
+                    <Input id="category" name="category" value={formData.category} onChange={handleFormInputChange} required disabled={isLoading} placeholder="e.g., Pain Relief, Skin Care" />
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="brand">Brand</Label>
@@ -295,11 +288,7 @@ export default function AddProductPage() {
                  </div>
             )}
 
-
-             <div className="space-y-2">
-              <Label htmlFor="rating">Rating (Optional, 1-5)</Label>
-              <Input id="rating" name="rating" type="number" step="0.1" min="1" max="5" value={formData.rating} onChange={handleFormInputChange} disabled={isLoading} />
-            </div>
+            {/* Rating input removed */}
             <div className="flex items-center space-x-2">
                 <Checkbox id="featured" name="featured" checked={formData.featured} onCheckedChange={(checked) => setFormData(prev => ({ ...prev, featured: Boolean(checked) }))} disabled={isLoading} />
                 <Label htmlFor="featured" className="font-normal">Mark as Featured Product</Label>
@@ -318,5 +307,3 @@ export default function AddProductPage() {
     </div>
   );
 }
-
-    
