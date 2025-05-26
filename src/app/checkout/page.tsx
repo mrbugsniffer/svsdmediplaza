@@ -9,16 +9,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { ShoppingBag, AlertTriangle } from 'lucide-react';
+import { ShoppingBag, Home } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import Image from 'next/image';
 import { useAuth } from '@/context/auth-context';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, getDoc, setDoc, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import type { ShippingAddress, UserProfile } from '@/types';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const shippingSchema = z.object({
   fullName: z.string().min(2, "Full name is required"),
@@ -28,6 +30,7 @@ const shippingSchema = z.object({
   country: z.string().min(2, "Country is required"),
   email: z.string().email("Invalid email address"),
   phone: z.string().optional(),
+  saveAsDefaultAddress: z.boolean().optional(),
 });
 
 type ShippingFormData = z.infer<typeof shippingSchema>;
@@ -35,36 +38,92 @@ type ShippingFormData = z.infer<typeof shippingSchema>;
 
 export default function CheckoutPage() {
   const { cartItems, cartTotal, clearCart, cartCount } = useCart();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [isClient, setIsClient] = useState(false);
   const [isProcessingOrder, setIsProcessingOrder] = useState(false);
 
-  useEffect(() => {
-    setIsClient(true);
-    if (isClient && cartItems.length === 0) {
-      router.replace('/cart');
-      toast({ title: "Your cart is empty", description: "Please add items to your cart before proceeding to checkout.", variant: "destructive" });
-    }
-  }, [cartItems, router, toast, isClient]);
-
-
   const shippingForm = useForm<ShippingFormData>({
     resolver: zodResolver(shippingSchema),
     defaultValues: {
-      fullName: '', address: '', city: '', postalCode: '', country: '', email: user?.email || '', phone: ''
+      fullName: '', address: '', city: '', postalCode: '', country: '', email: '', phone: '', saveAsDefaultAddress: true,
     }
   });
 
   useEffect(() => {
-    if (user?.email && !shippingForm.getValues('email')) {
-        shippingForm.setValue('email', user.email);
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      // Pre-fill email if not already set by profile/order fetch
+      if (!shippingForm.getValues('email')) {
+        shippingForm.setValue('email', user.email || '');
+      }
+      if (!shippingForm.getValues('fullName') && user.displayName) {
+         shippingForm.setValue('fullName', user.displayName);
+      }
+
+      // Fetch user profile for default shipping address or last order address
+      const fetchAddress = async () => {
+        let addressToPreFill: ShippingAddress | null = null;
+        
+        // 1. Try to get default shipping address from userProfile
+        const userProfileRef = doc(db, 'userProfiles', user.uid);
+        const userProfileSnap = await getDoc(userProfileRef);
+        if (userProfileSnap.exists()) {
+          const userProfileData = userProfileSnap.data() as UserProfile;
+          if (userProfileData.defaultShippingAddress) {
+            addressToPreFill = userProfileData.defaultShippingAddress;
+          }
+        }
+
+        // 2. If no default, try to get from last order
+        if (!addressToPreFill) {
+          const ordersRef = collection(db, 'orders');
+          const q = query(ordersRef, where('userId', '==', user.uid), orderBy('createdAt', 'desc'), limit(1));
+          const orderSnap = await getDocs(q);
+          if (!orderSnap.empty) {
+            const lastOrder = orderSnap.docs[0].data();
+            if (lastOrder.shippingAddress) {
+              addressToPreFill = lastOrder.shippingAddress as ShippingAddress;
+            }
+          }
+        }
+        
+        if (addressToPreFill) {
+          shippingForm.reset({
+            ...shippingForm.getValues(), // keep existing values like email if already set
+            fullName: addressToPreFill.fullName || shippingForm.getValues('fullName'),
+            address: addressToPreFill.address,
+            city: addressToPreFill.city,
+            postalCode: addressToPreFill.postalCode,
+            country: addressToPreFill.country,
+            phone: addressToPreFill.phone || '',
+            email: shippingForm.getValues('email') || user.email || '', // Prioritize already set email
+            saveAsDefaultAddress: true, // Default to true if pre-filling
+          });
+        } else if (user.email) { // Ensure email is set from auth if no address found
+             shippingForm.setValue('email', user.email);
+        }
+      };
+      fetchAddress();
+    } else if (!authLoading && !user && isClient) {
+      // If not logged in, but trying to checkout, redirect to login
+      router.push('/login?redirect=/checkout');
+      toast({ title: "Authentication Required", description: "Please login to proceed to checkout.", variant: "destructive" });
     }
-    if (user?.displayName && !shippingForm.getValues('fullName')) {
-        shippingForm.setValue('fullName', user.displayName);
+  }, [user, authLoading, shippingForm, router, toast, isClient]);
+
+
+  useEffect(() => {
+    // This effect needs to run after isClient is true
+    if (isClient && !authLoading && cartItems.length === 0) {
+      router.replace('/cart');
+      toast({ title: "Your cart is empty", description: "Please add items to your cart before proceeding to checkout.", variant: "destructive" });
     }
-  }, [user, shippingForm]);
+  }, [cartItems, router, toast, isClient, authLoading]);
 
 
   const taxRate = 0.08; // 8%
@@ -72,34 +131,57 @@ export default function CheckoutPage() {
   const taxes = cartTotal * taxRate;
   const finalTotal = cartTotal + taxes + shippingCost;
 
-  const handlePlaceOrder = async (shippingData: ShippingFormData) => {
+  const handlePlaceOrder = async (formData: ShippingFormData) => {
     setIsProcessingOrder(true);
-    
-    // No payment form validation needed anymore
+    if (!user) {
+      toast({ title: "Not Logged In", description: "Please login to place an order.", variant: "destructive" });
+      setIsProcessingOrder(false);
+      router.push('/login?redirect=/checkout');
+      return;
+    }
+
+    const currentShippingAddress: ShippingAddress = {
+      fullName: formData.fullName,
+      address: formData.address,
+      city: formData.city,
+      postalCode: formData.postalCode,
+      country: formData.country,
+      phone: formData.phone || undefined,
+    };
 
     try {
       const orderData = {
-        userId: user?.uid || undefined,
-        customerEmail: shippingData.email,
+        userId: user.uid,
+        customerEmail: formData.email, // Use email from form
         items: cartItems,
         totalAmount: finalTotal,
-        orderDate: serverTimestamp(), 
+        orderDate: serverTimestamp(),
         createdAt: serverTimestamp(),
         status: 'Pending' as const,
-        shippingAddress: {
-          fullName: shippingData.fullName,
-          address: shippingData.address,
-          city: shippingData.city,
-          postalCode: shippingData.postalCode,
-          country: shippingData.country,
-          phone: shippingData.phone || undefined,
-        },
+        shippingAddress: currentShippingAddress,
       };
 
       const ordersCollectionRef = collection(db, 'orders');
       const docRef = await addDoc(ordersCollectionRef, orderData);
+
+      // Save as default shipping address if checked
+      if (formData.saveAsDefaultAddress) {
+        const userProfileRef = doc(db, 'userProfiles', user.uid);
+        const userProfileData: Partial<UserProfile> = {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+          defaultShippingAddress: currentShippingAddress,
+          updatedAt: serverTimestamp(),
+        };
+        // Use setDoc with merge: true to create or update
+        await setDoc(userProfileRef, userProfileData, { merge: true }); 
+        if (! (await getDoc(userProfileRef)).exists()) { // if it was a new doc, set createdAt
+            await setDoc(userProfileRef, { createdAt: serverTimestamp()}, {merge: true});
+        }
+      }
       
-      toast({ title: "Order Placed!", description: `Your order ${docRef.id} has been successfully placed.` });
+      toast({ title: "Order Placed!", description: `Your order ${docRef.id.substring(0,10)}... has been successfully placed.` });
       clearCart();
       router.push(`/order-confirmation/${docRef.id}`);
 
@@ -115,7 +197,7 @@ export default function CheckoutPage() {
     }
   };
   
-  if (!isClient || cartItems.length === 0) {
+  if (!isClient || authLoading || (isClient && !user && !authLoading)) { // Show loading until client-side checks are done and user status is known
     return (
       <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
           <p className="text-lg text-muted-foreground">Loading checkout...</p>
@@ -145,7 +227,7 @@ export default function CheckoutPage() {
                   )} />
                   <FormField control={shippingForm.control} name="email" render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
+                      <FormLabel>Email for Order Updates</FormLabel>
                       <FormControl><Input type="email" placeholder="you@example.com" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
@@ -187,12 +269,32 @@ export default function CheckoutPage() {
                       <FormMessage />
                     </FormItem>
                   )} />
+                  <FormField
+                    control={shippingForm.control}
+                    name="saveAsDefaultAddress"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow-sm bg-muted/30">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel>
+                            Save this address as my default shipping address
+                          </FormLabel>
+                          <FormDescription>
+                            Use this for faster checkout next time.
+                          </FormDescription>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
                 </form>
               </Form>
             </CardContent>
           </Card>
-
-          {/* Payment Details Card Removed */}
         </div>
 
         <div className="lg:col-span-1">

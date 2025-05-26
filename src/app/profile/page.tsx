@@ -6,11 +6,12 @@ import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { UserCircle, Mail, KeyRound, MailCheck, CalendarPlus, CalendarClock, ShieldAlert, MailQuestion, Edit3 } from 'lucide-react';
+import { UserCircle, Mail, KeyRound, MailCheck, CalendarPlus, CalendarClock, ShieldAlert, MailQuestion, Edit3, Home } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
-import { auth } from '@/lib/firebase'; // Import auth directly
+import { auth, db } from '@/lib/firebase'; // Import db
 import { sendPasswordResetEmail, updateProfile } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore'; // Import Firestore functions
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -35,6 +36,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import type { UserProfile, ShippingAddress } from '@/types';
+import { Separator } from '@/components/ui/separator';
 
 export default function ProfilePage() {
   const { user, loading } = useAuth();
@@ -42,41 +45,42 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const [isSendingResetEmail, setIsSendingResetEmail] = useState(false);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
-  const [displayName, setDisplayName] = useState(user?.displayName || '');
+  const [displayName, setDisplayName] = useState('');
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
 
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/login?redirect=/profile'); // Redirect to login if not authenticated
-    }
-    if (user && user.displayName !== displayName) {
+      router.push('/login?redirect=/profile');
+    } else if (user) {
       setDisplayName(user.displayName || '');
+      const fetchUserProfile = async () => {
+        setProfileLoading(true);
+        const userProfileRef = doc(db, 'userProfiles', user.uid);
+        const docSnap = await getDoc(userProfileRef);
+        if (docSnap.exists()) {
+          setUserProfile(docSnap.data() as UserProfile);
+        } else {
+          setUserProfile(null); // No profile exists yet
+        }
+        setProfileLoading(false);
+      };
+      fetchUserProfile();
     }
-  }, [user, loading, router, displayName]);
+  }, [user, loading, router]);
 
   const handleSendPasswordReset = async () => {
     if (!user || !user.email) {
-      toast({
-        title: "Error",
-        description: "User email not found. Cannot send reset email.",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "User email not found.", variant: "destructive" });
       return;
     }
     setIsSendingResetEmail(true);
     try {
       await sendPasswordResetEmail(auth, user.email);
-      toast({
-        title: "Password Reset Email Sent",
-        description: `A password reset link has been sent to ${user.email}. Please check your inbox.`,
-      });
+      toast({ title: "Password Reset Email Sent", description: `A password reset link sent to ${user.email}.` });
     } catch (error: any) {
-      console.error("Password reset error:", error);
-      toast({
-        title: "Error Sending Reset Email",
-        description: error.message || "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      });
+      toast({ title: "Error Sending Reset Email", description: error.message, variant: "destructive" });
     } finally {
       setIsSendingResetEmail(false);
     }
@@ -84,35 +88,27 @@ export default function ProfilePage() {
 
   const handleUpdateProfile = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!user) {
-      toast({ title: "Error", description: "You must be logged in to update your profile.", variant: "destructive" });
-      return;
-    }
+    if (!user) return;
     if (displayName.trim() === "") {
         toast({ title: "Validation Error", description: "Display name cannot be empty.", variant: "destructive" });
         return;
     }
-
     setIsUpdatingProfile(true);
     try {
       await updateProfile(user, { displayName: displayName.trim() });
-      toast({ title: "Profile Updated", description: "Your display name has been successfully updated." });
-      setIsEditProfileOpen(false); // Close dialog on success
-      // The AuthContext's onAuthStateChanged listener should pick up the user object change
+      // Optionally update display name in userProfiles collection too if you store it there
+      // const userProfileRef = doc(db, 'userProfiles', user.uid);
+      // await setDoc(userProfileRef, { displayName: displayName.trim() }, { merge: true });
+      toast({ title: "Profile Updated", description: "Display name updated successfully." });
+      setIsEditProfileOpen(false);
     } catch (error: any) {
-      console.error("Profile update error:", error);
-      toast({
-        title: "Profile Update Failed",
-        description: error.message || "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      });
+      toast({ title: "Profile Update Failed", description: error.message, variant: "destructive" });
     } finally {
       setIsUpdatingProfile(false);
     }
   };
 
-
-  if (loading) {
+  if (loading || profileLoading) {
     return (
       <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
         <svg className="animate-spin h-10 w-10 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -125,6 +121,7 @@ export default function ProfilePage() {
   }
 
   if (!user) {
+    // This case should ideally be handled by the useEffect redirect, but as a fallback:
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center">
         <UserCircle size={64} className="text-muted-foreground mb-6" />
@@ -137,29 +134,30 @@ export default function ProfilePage() {
     );
   }
 
-  const ProfileDetailItem = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value: React.ReactNode }) => (
-    <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-md">
-      <Icon size={20} className="text-muted-foreground mt-1 shrink-0" />
+  const ProfileDetailItem = ({ icon: Icon, label, value, valueClassName }: { icon: React.ElementType, label: string, value: React.ReactNode, valueClassName?: string }) => (
+    <div className="flex items-start gap-3 p-3 bg-muted/30 rounded-md border">
+      <Icon size={20} className="text-primary mt-1 shrink-0" />
       <div>
         <p className="text-sm text-muted-foreground">{label}</p>
-        <p className="font-medium text-foreground">{value}</p>
+        <p className={`font-medium text-foreground ${valueClassName || ''}`}>{value}</p>
       </div>
     </div>
   );
   
-  const creationTime = user.metadata.creationTime ? format(new Date(user.metadata.creationTime), "PPPp") : 'Not available';
-  const lastSignInTime = user.metadata.lastSignInTime ? format(new Date(user.metadata.lastSignInTime), "PPPp") : 'Not available';
+  const creationTime = user.metadata.creationTime ? format(new Date(user.metadata.creationTime), "MMMM d, yyyy 'at' h:mm a") : 'Not available';
+  const lastSignInTime = user.metadata.lastSignInTime ? format(new Date(user.metadata.lastSignInTime), "MMMM d, yyyy 'at' h:mm a") : 'Not available';
 
   return (
-    <div className="max-w-2xl mx-auto py-12">
+    <div className="max-w-2xl mx-auto py-8 sm:py-12">
       <Card className="shadow-xl">
-        <CardHeader className="text-center pb-4">
-          <UserCircle size={64} className="mx-auto text-primary mb-4" />
+        <CardHeader className="text-center pb-6">
+          <UserCircle size={64} className="mx-auto text-primary mb-3" />
           <CardTitle className="text-3xl font-bold">{user.displayName || 'Your Profile'}</CardTitle>
           <CardDescription>Manage your account details and preferences.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 px-4 sm:px-6">
           <div className="space-y-3">
+            <h3 className="text-lg font-semibold text-foreground mb-2">Account Information</h3>
             {user.displayName && (
                  <ProfileDetailItem icon={UserCircle} label="Display Name" value={user.displayName} />
             )}
@@ -167,38 +165,65 @@ export default function ProfilePage() {
             <ProfileDetailItem 
               icon={user.emailVerified ? MailCheck : ShieldAlert} 
               label="Email Verified" 
-              value={
-                <span className={user.emailVerified ? 'text-green-600' : 'text-amber-600'}>
-                  {user.emailVerified ? 'Yes' : 'No'}
-                  {!user.emailVerified && (
-                    <span className="text-xs ml-2">(Verification email can be sent if needed)</span>
-                  )}
-                </span>
-              } 
+              value={user.emailVerified ? 'Yes' : 'No'} 
+              valueClassName={user.emailVerified ? 'text-green-600' : 'text-amber-600'}
             />
+            {!user.emailVerified && (
+                <p className="text-xs text-muted-foreground pl-9 -mt-2">
+                    A verification email can be re-sent if needed. Some features may require a verified email.
+                </p>
+            )}
             <ProfileDetailItem icon={KeyRound} label="User ID" value={<span className="text-xs">{user.uid}</span>} />
             <ProfileDetailItem icon={CalendarPlus} label="Account Created" value={creationTime} />
             <ProfileDetailItem icon={CalendarClock} label="Last Sign-in" value={lastSignInTime} />
           </div>
           
-          <div className="pt-4 border-t">
+          <Separator />
+
+          <div>
+             <h3 className="text-lg font-semibold text-foreground mb-3">Default Shipping Address</h3>
+            {userProfile?.defaultShippingAddress ? (
+              <div className="p-4 bg-muted/30 rounded-md border space-y-1 text-sm">
+                <p><strong>{userProfile.defaultShippingAddress.fullName}</strong></p>
+                <p>{userProfile.defaultShippingAddress.address}</p>
+                <p>{userProfile.defaultShippingAddress.city}, {userProfile.defaultShippingAddress.postalCode}</p>
+                <p>{userProfile.defaultShippingAddress.country}</p>
+                {userProfile.defaultShippingAddress.phone && <p>Phone: {userProfile.defaultShippingAddress.phone}</p>}
+                 <Button variant="outline" size="sm" className="mt-3" onClick={() => router.push('/checkout')}>
+                   Edit on Checkout Page
+                </Button>
+              </div>
+            ) : (
+              <div className="p-4 bg-muted/30 rounded-md border text-sm text-muted-foreground text-center">
+                <Home size={24} className="mx-auto mb-2 text-primary" />
+                No default shipping address set.
+                <Button variant="link" className="block mx-auto p-0 h-auto mt-1" onClick={() => router.push('/checkout')}>
+                    Add one during your next checkout.
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <Separator />
+          
+          <div>
             <h3 className="text-lg font-semibold text-foreground mb-3">Account Actions</h3>
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Dialog open={isEditProfileOpen} onOpenChange={setIsEditProfileOpen}>
                   <DialogTrigger asChild>
-                    <Button variant="outline"><Edit3 size={16} className="mr-2" /> Edit Profile</Button>
+                    <Button variant="outline" className="w-full"><Edit3 size={16} className="mr-2" /> Edit Display Name</Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
-                      <DialogTitle>Edit Profile</DialogTitle>
+                      <DialogTitle>Edit Display Name</DialogTitle>
                       <DialogDescription>
                         Make changes to your display name here. Click save when you&apos;re done.
                       </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleUpdateProfile} className="grid gap-4 py-4">
                       <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="displayName" className="text-right">
-                          Display Name
+                        <Label htmlFor="displayName" className="text-right col-span-1">
+                          Name
                         </Label>
                         <Input
                           id="displayName"
@@ -222,9 +247,9 @@ export default function ProfilePage() {
                 
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="outline" disabled={isSendingResetEmail}>
+                    <Button variant="outline" disabled={isSendingResetEmail || !user.emailVerified} className="w-full">
                       <MailQuestion size={16} className="mr-2" /> 
-                      {isSendingResetEmail ? 'Sending Email...' : 'Send Password Reset Email'}
+                      {isSendingResetEmail ? 'Sending...' : 'Reset Password'}
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
@@ -246,7 +271,7 @@ export default function ProfilePage() {
             </div>
             {!user.emailVerified && (
               <p className="text-xs text-muted-foreground mt-3">
-                To manage sensitive account settings like changing your password or verifying your email, please ensure your email is verified first.
+                Password reset requires a verified email address. Please verify your email.
               </p>
             )}
           </div>
