@@ -16,7 +16,7 @@ import { mockCategories, mockBrands } from '@/lib/mock-data';
 import { useToast } from "@/hooks/use-toast";
 import { useSearchParams } from 'next/navigation';
 
-type SortOption = 'price-asc' | 'price-desc' | 'name-asc' | 'name-desc' | 'featured'; // Removed 'rating'
+type SortOption = 'price-asc' | 'price-desc' | 'name-asc' | 'name-desc' | 'featured';
 
 const INITIAL_MAX_PRICE = 500; 
 
@@ -89,7 +89,6 @@ export default function ProductsPage() {
     products = products.filter(product => {
       const searchLower = filters.searchQuery.toLowerCase();
       const nameMatch = product.name.toLowerCase().includes(searchLower);
-      const descriptionMatch = product.description?.toLowerCase().includes(searchLower) || false;
       
       const categoryMatch =
         filters.category === ''
@@ -101,7 +100,7 @@ export default function ProductsPage() {
       const brandMatch = filters.brand ? product.brand === filters.brand : true;
       const priceMatch = product.price >= filters.priceRange[0] && product.price <= filters.priceRange[1];
       
-      return (nameMatch || descriptionMatch) && categoryMatch && brandMatch && priceMatch;
+      return nameMatch && categoryMatch && brandMatch && priceMatch;
     });
 
     switch (sortOption) {
@@ -117,9 +116,6 @@ export default function ProductsPage() {
       case 'name-desc':
         products.sort((a, b) => b.name.localeCompare(a.name));
         break;
-      // case 'rating': // Removed rating sort
-      //   products.sort((a,b) => (b.rating || 0) - (a.rating || 0));
-      //   break;
       case 'featured':
       default:
         products.sort((a,b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0) || a.name.localeCompare(b.name));
@@ -132,13 +128,13 @@ export default function ProductsPage() {
     return (
       <div className="flex flex-col lg:flex-row gap-4">
         <div className="w-full lg:w-1/4 animate-pulse">
-          <div className="p-4 bg-card rounded-xl shadow-lg h-80"></div>
+          <div className="p-3 bg-card rounded-xl shadow-lg h-80"></div>
         </div>
         <div className="w-full lg:w-3/4">
-          <div className="h-8 bg-muted rounded w-1/3 mb-4 animate-pulse"></div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className="bg-card rounded-xl shadow-lg p-2 animate-pulse h-60"></div>
+          <div className="h-8 bg-muted rounded w-1/3 mb-3 animate-pulse"></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+            {[...Array(10)].map((_, i) => (
+              <div key={i} className="bg-card rounded-xl shadow-lg p-2 animate-pulse h-52"></div>
             ))}
           </div>
         </div>
@@ -169,7 +165,6 @@ export default function ProductsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="featured">Featured</SelectItem>
-                    {/* <SelectItem value="rating">Top Rated</SelectItem> */} {/* Removed rating sort */}
                     <SelectItem value="price-asc">Price: Low to High</SelectItem>
                     <SelectItem value="price-desc">Price: High to Low</SelectItem>
                     <SelectItem value="name-asc">Name: A to Z</SelectItem>
@@ -197,7 +192,6 @@ export default function ProductsPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="featured">Featured</SelectItem>
-                      {/* <SelectItem value="rating">Top Rated</SelectItem> */} {/* Removed rating sort */}
                       <SelectItem value="price-asc">Price: Low to High</SelectItem>
                       <SelectItem value="price-desc">Price: High to Low</SelectItem>
                       <SelectItem value="name-asc">Name: A to Z</SelectItem>
@@ -214,7 +208,7 @@ export default function ProductsPage() {
                 <p className="text-lg text-muted-foreground">Loading products...</p>
             </div>
           ) : filteredProducts.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"> 
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3"> 
               {filteredProducts.map(product => (
                 <ProductCard key={product.id} product={product} />
               ))}
