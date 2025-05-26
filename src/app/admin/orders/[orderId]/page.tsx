@@ -1,16 +1,16 @@
 
 'use client';
 
-import { useEffect, useState, ChangeEvent, FormEvent, use } from 'react'; // Added 'use'
+import { useEffect, useState, ChangeEvent, FormEvent, use } from 'react';
 import { useRouter } from 'next/navigation';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase'; // Import auth
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import type { Order, CartItem } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, Package, ShoppingBag, UserCircle, HomeIcon, Edit } from 'lucide-react';
+import { ChevronLeft, Package, ShoppingBag, UserCircle, HomeIcon, Edit3Icon, Edit } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import Image from 'next/image';
@@ -24,12 +24,10 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
+const ADMIN_EMAIL = 'admin@gmail.com'; // Define admin email constant
 const orderStatusOptions: Order['status'][] = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'];
 
-// Page components receive params as props.
-// Rename `params` to `paramsAsPromise` to indicate it might be a promise.
 export default function AdminOrderDetailPage({ params: paramsAsPromise }: { params: { orderId: string } }) {
-  // Use React.use() to unwrap the params if it's a promise.
   const resolvedParams = use(paramsAsPromise as any) as { orderId?: string };
   const orderId = resolvedParams?.orderId;
 
@@ -40,9 +38,28 @@ export default function AdminOrderDetailPage({ params: paramsAsPromise }: { para
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<Order['status'] | undefined>(undefined);
+  const [isFirebaseAuthenticatedAdmin, setIsFirebaseAuthenticatedAdmin] = useState(false);
+
 
   useEffect(() => {
-    if (orderId) {
+    const currentUser = auth.currentUser;
+    if (currentUser && currentUser.email === ADMIN_EMAIL) {
+      setIsFirebaseAuthenticatedAdmin(true);
+    } else {
+      setIsFirebaseAuthenticatedAdmin(false);
+      toast({
+        title: "Authentication Error",
+        description: "Admin user not authenticated. You cannot view or manage order details.",
+        variant: "destructive",
+      });
+      // Optionally redirect if not admin
+      // router.push('/admin/login');
+    }
+  }, [toast, router]);
+
+
+  useEffect(() => {
+    if (orderId && isFirebaseAuthenticatedAdmin) { // Fetch only if admin and orderId exists
       setIsLoading(true);
       const fetchOrder = async () => {
         try {
@@ -54,8 +71,8 @@ export default function AdminOrderDetailPage({ params: paramsAsPromise }: { para
             const fetchedOrder = {
               id: orderSnap.id,
               ...data,
-              orderDate: data.orderDate?.toDate ? data.orderDate.toDate() : new Date(data.orderDate),
-              createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt),
+              orderDate: data.orderDate?.toDate ? data.orderDate.toDate() : new Date(data.orderDate || Date.now()),
+              createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt || Date.now()),
               updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : undefined,
             } as Order;
             setOrder(fetchedOrder);
@@ -64,23 +81,35 @@ export default function AdminOrderDetailPage({ params: paramsAsPromise }: { para
             toast({ title: "Error", description: `Order with ID ${orderId} not found.`, variant: "destructive" });
             setOrder(null);
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error("Error fetching order from Firestore:", error);
-          toast({ title: "Error", description: "Failed to fetch order details.", variant: "destructive" });
+          let desc = "Failed to fetch order details. ";
+          if (error.code === 'permission-denied') {
+            desc += "Firestore permission denied. Ensure the admin user has read access for this order and appropriate custom claims if required by security rules.";
+          } else {
+            desc += error.message;
+          }
+          toast({ title: "Error Fetching Order", description: desc, variant: "destructive", duration: 8000 });
           setOrder(null);
         } finally {
           setIsLoading(false);
         }
       };
       fetchOrder();
-    } else if (resolvedParams && !orderId) { // Check resolvedParams to ensure it's not an initial undefined state
+    } else if (resolvedParams && !orderId) { 
         setIsLoading(false);
         toast({ title: "Error", description: "Order ID is missing.", variant: "destructive" });
+    } else if (!isFirebaseAuthenticatedAdmin && orderId) {
+        setIsLoading(false); // Done "loading" as we won't fetch due to auth
     }
-  }, [orderId, toast, resolvedParams]); // Add resolvedParams to dependency array
+  }, [orderId, toast, resolvedParams, isFirebaseAuthenticatedAdmin]);
 
   const handleStatusUpdate = async () => {
     if (!order || !selectedStatus || selectedStatus === order.status) return;
+     if (!isFirebaseAuthenticatedAdmin) {
+      toast({ title: "Action Denied", description: "Admin not authenticated. Cannot update order status.", variant: "destructive"});
+      return;
+    }
     setIsUpdatingStatus(true);
     try {
         const orderDocRef = doc(db, 'orders', order.id);
@@ -92,10 +121,17 @@ export default function AdminOrderDetailPage({ params: paramsAsPromise }: { para
         toast({ title: "Status Updated", description: `Order status changed to ${selectedStatus}.`});
     } catch (error: any) {
         console.error("Error updating order status:", error);
+        let desc = "Failed to update order status. ";
+        if (error.code === 'permission-denied') {
+            desc += "Firestore permission denied. Ensure the admin user has update permissions for orders and appropriate custom claims if required by security rules.";
+        } else {
+            desc += error.message;
+        }
         toast({
             title: "Error Updating Status",
-            description: error.message || "Failed to update order status. Check permissions.",
-            variant: "destructive"
+            description: desc,
+            variant: "destructive",
+            duration: 8000,
         });
     } finally {
         setIsUpdatingStatus(false);
@@ -112,6 +148,21 @@ export default function AdminOrderDetailPage({ params: paramsAsPromise }: { para
       default: return 'default';
     }
   };
+  
+  if (!isFirebaseAuthenticatedAdmin && !isLoading) {
+    return (
+      <div className="space-y-6 text-center py-10">
+         <h1 className="text-2xl font-bold text-destructive">Access Denied</h1>
+         <p className="text-muted-foreground">You must be an authenticated admin to view order details.</p>
+         <Button asChild variant="outline" className="mt-4">
+           <Link href="/admin/login">Go to Admin Login</Link>
+         </Button>
+         <Button variant="outline" asChild className="mt-4 ml-2">
+           <Link href="/admin/orders">Back to Orders List</Link>
+         </Button>
+      </div>
+    )
+  }
 
   if (isLoading) {
     return (
@@ -171,7 +222,7 @@ export default function AdminOrderDetailPage({ params: paramsAsPromise }: { para
                 </div>
               )}
               <div className="flex items-center gap-2">
-                <UserCircle size={18} className="text-muted-foreground" /> {/* Icon can be MailIcon */}
+                <UserCircle size={18} className="text-muted-foreground" />
                 <span className="text-muted-foreground">Customer Email:</span>
                 <span className="font-medium">{order.customerEmail}</span>
               </div>
@@ -195,10 +246,10 @@ export default function AdminOrderDetailPage({ params: paramsAsPromise }: { para
         <div className="lg:col-span-1 space-y-6">
           <Card className="shadow-md">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Edit size={20} /> Update Order Status</CardTitle>
+              <CardTitle className="flex items-center gap-2"><Edit3Icon size={20} /> Update Order Status</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Select value={selectedStatus} onValueChange={(value) => setSelectedStatus(value as Order['status'])}>
+              <Select value={selectedStatus} onValueChange={(value) => setSelectedStatus(value as Order['status'])} disabled={!isFirebaseAuthenticatedAdmin || isUpdatingStatus}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select new status" />
                 </SelectTrigger>
@@ -212,7 +263,7 @@ export default function AdminOrderDetailPage({ params: paramsAsPromise }: { para
               </Select>
               <Button
                 onClick={handleStatusUpdate}
-                disabled={isUpdatingStatus || !selectedStatus || selectedStatus === order.status}
+                disabled={!isFirebaseAuthenticatedAdmin || isUpdatingStatus || !selectedStatus || selectedStatus === order.status}
                 className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
               >
                 {isUpdatingStatus ? 'Updating...' : 'Save Status'}
@@ -275,3 +326,5 @@ export default function AdminOrderDetailPage({ params: paramsAsPromise }: { para
     </div>
   );
 }
+
+    

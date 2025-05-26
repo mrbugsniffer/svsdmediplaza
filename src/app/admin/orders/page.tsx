@@ -19,25 +19,24 @@ const ADMIN_EMAIL = 'admin@gmail.com'; // Define admin email constant
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isFirebaseAuthenticated, setIsFirebaseAuthenticated] = useState(false);
+  const [isFirebaseAuthenticatedAdmin, setIsFirebaseAuthenticatedAdmin] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     const currentUser = auth.currentUser;
     console.log("AdminOrdersPage: Firebase currentUser on mount:", currentUser?.email);
-    if (currentUser) {
-      setIsFirebaseAuthenticated(true);
+    if (currentUser && currentUser.email === ADMIN_EMAIL) {
+      setIsFirebaseAuthenticatedAdmin(true);
     } else {
-      setIsFirebaseAuthenticated(false);
+      setIsFirebaseAuthenticatedAdmin(false);
       setIsLoading(false); 
-      console.warn("AdminOrdersPage: No Firebase user authenticated. Cannot fetch orders.");
       toast({
-        title: "Authentication Required",
+        title: "Authentication Error",
         description: "Admin user not authenticated with Firebase. Please re-login to view orders.",
         variant: "destructive",
         duration: 8000
       });
-      return;
+      return; // Exit if not the authenticated admin
     }
 
     setIsLoading(true);
@@ -50,29 +49,31 @@ export default function AdminOrdersPage() {
         return {
           id: doc.id,
           ...data,
-          orderDate: data.orderDate?.toDate ? data.orderDate.toDate() : new Date(data.orderDate),
-          createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt),
+          // Ensure Firestore Timestamps are converted to Date objects
+          orderDate: data.orderDate?.toDate ? data.orderDate.toDate() : new Date(data.orderDate || Date.now()),
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt || Date.now()),
+          updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : undefined,
         } as Order;
       });
       setOrders(ordersData);
       setIsLoading(false);
     }, (error: any) => {
-      const currentAuthUser = auth.currentUser; // Get current auth state at the time of error
+      const currentAuthUser = auth.currentUser;
       console.error("Error fetching orders from Firestore:", error);
       console.error("AdminOrdersPage: Firebase currentUser at the time of Firestore error:", currentAuthUser?.email, "UID:", currentAuthUser?.uid);
 
       let description = "Failed to fetch orders. ";
       if (error.code === 'permission-denied' || error.message.toLowerCase().includes('insufficient permissions')) {
-        description += "Firestore permission denied. Please check your Firestore security rules. ";
+        description += "Firestore permission denied. ";
         if (currentAuthUser?.email === ADMIN_EMAIL) {
-            description += `Ensure the admin user (${ADMIN_EMAIL}) has the necessary 'admin: true' custom claim set in Firebase Authentication, as this is likely required by your security rules for listing all orders. Custom claims are not set by the frontend login.`;
+            description += `Ensure the admin user (${ADMIN_EMAIL}) has the necessary 'admin: true' custom claim set in Firebase Authentication, as this is likely required by your security rules for listing all orders. Custom claims are not set by the frontend login. Check Firestore rules in Firebase Console.`;
         } else {
             description += "Ensure the authenticated user has read access to the 'orders' collection and necessary custom claims if required by rules.";
         }
       } else {
         description += error.message;
       }
-      toast({ title: "Error Fetching Orders", description, variant: "destructive", duration: 12000 }); // Increased duration
+      toast({ title: "Error Fetching Orders", description, variant: "destructive", duration: 12000 });
       setIsLoading(false);
     });
 
@@ -90,7 +91,7 @@ export default function AdminOrdersPage() {
     }
   };
 
-  if (!isFirebaseAuthenticated && !isLoading) {
+  if (!isFirebaseAuthenticatedAdmin && !isLoading) {
     return (
       <div className="space-y-6 text-center py-10">
          <h1 className="text-2xl font-bold text-destructive">Authentication Error</h1>
@@ -177,3 +178,5 @@ export default function AdminOrdersPage() {
     </div>
   );
 }
+
+    

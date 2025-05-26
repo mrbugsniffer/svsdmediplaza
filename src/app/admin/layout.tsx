@@ -7,11 +7,11 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { SidebarProvider, Sidebar, SidebarTrigger, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter } from '@/components/ui/sidebar';
 import { LayoutDashboard, Package, LogOut, Settings, Users, ShoppingCart, BarChart3 } from 'lucide-react';
-// import { Button } from '@/components/ui/button'; No longer needed here as SidebarMenuButton is used
 import { Toaster } from "@/components/ui/toaster";
-
+import { auth } from '@/lib/firebase'; // Import Firebase auth
 
 const ADMIN_AUTH_KEY = 'svsdmediplaza_admin_auth';
+const ADMIN_EMAIL = 'admin@gmail.com';
 
 const SvsdMediPlazaAdminLogo = () => (
   <svg width="24" height="24" viewBox="0 0 100 100" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
@@ -19,30 +19,49 @@ const SvsdMediPlazaAdminLogo = () => (
   </svg>
 );
 
-
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [isClient, setIsClient] = useState(false);
+  const [isAdminTrulyAuthenticated, setIsAdminTrulyAuthenticated] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
-    if (typeof window !== 'undefined') { // Ensure localStorage is accessed only on client
-        const isAdminAuthenticated = localStorage.getItem(ADMIN_AUTH_KEY) === 'true';
-        if (!isAdminAuthenticated && pathname !== '/admin/login') {
-            router.replace('/admin/login');
-        }
-    }
-  }, [router, pathname]);
+  }, []);
 
-  const handleLogout = () => {
-    if (typeof window !== 'undefined') {
-        localStorage.removeItem(ADMIN_AUTH_KEY);
+  useEffect(() => {
+    if (isClient) {
+      const localAuthFlag = localStorage.getItem(ADMIN_AUTH_KEY) === 'true';
+      const firebaseUser = auth.currentUser;
+      const firebaseAdminMatch = firebaseUser && firebaseUser.email === ADMIN_EMAIL;
+
+      if (localAuthFlag && firebaseAdminMatch) {
+        setIsAdminTrulyAuthenticated(true);
+      } else {
+        setIsAdminTrulyAuthenticated(false);
+        // If local flag exists but Firebase doesn't match, clear local flag and sign out
+        if (localAuthFlag && !firebaseAdminMatch) {
+          localStorage.removeItem(ADMIN_AUTH_KEY);
+          if (firebaseUser) auth.signOut(); // Sign out if a different user is logged in
+        }
+        if (pathname !== '/admin/login') {
+          router.replace('/admin/login');
+        }
+      }
+    }
+  }, [isClient, router, pathname]);
+
+  const handleLogout = async () => {
+    setIsAdminTrulyAuthenticated(false);
+    localStorage.removeItem(ADMIN_AUTH_KEY);
+    try {
+      await auth.signOut();
+    } catch (error) {
+      console.error("Error signing out admin from Firebase:", error);
     }
     router.push('/admin/login');
   };
 
-  // Client-side check before rendering
   if (!isClient) {
     return (
         <div className="flex justify-center items-center min-h-screen bg-muted">
@@ -51,25 +70,22 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     );
   }
   
-  // Further check if authenticated, after isClient is true
-  if (localStorage.getItem(ADMIN_AUTH_KEY) !== 'true' && pathname !== '/admin/login') {
-     // router.replace('/admin/login') might already be called by useEffect
-     // This provides a fallback loading state if redirection hasn't completed
-    return (
-        <div className="flex justify-center items-center min-h-screen bg-muted">
-            <p>Redirecting to login...</p>
-        </div>
-    );
-  }
-
-
   if (pathname === '/admin/login') {
     return (
       <>
-        {/* AdminLoginPage will provide its own full-screen styling */}
+        {/* AdminLoginPage provides its own full-screen styling */}
         {children}
         <Toaster /> {/* Toaster for admin login page */}
       </>
+    );
+  }
+
+  // If not on login page and not truly authenticated, show loading/redirecting
+  if (!isAdminTrulyAuthenticated && pathname !== '/admin/login') {
+    return (
+        <div className="flex justify-center items-center min-h-screen bg-muted">
+            <p>Verifying admin session... Redirecting if necessary.</p>
+        </div>
     );
   }
 
@@ -138,3 +154,5 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     </>
   );
 }
+
+    

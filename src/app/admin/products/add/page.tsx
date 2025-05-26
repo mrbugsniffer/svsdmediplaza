@@ -13,10 +13,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { mockCategories, mockBrands } from '@/lib/mock-data';
 import Link from 'next/link';
-import { ChevronLeft, UploadCloud } from 'lucide-react';
-import { db } from '@/lib/firebase';
+import { ChevronLeft, UploadCloud, PackagePlus } from 'lucide-react';
+import { db, auth } from '@/lib/firebase'; // Import auth
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import Image from 'next/image';
+
+const ADMIN_EMAIL = 'admin@gmail.com'; // Define admin email constant
 
 interface ProductFormData {
   name: string;
@@ -40,14 +42,31 @@ export default function AddProductPage() {
     category: '',
     brand: '',
     stock: '',
-    imageUrl: '', // Default to empty, user can provide URL or upload
+    imageUrl: '',
     featured: false,
     rating: '',
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [isFirebaseAuthenticatedAdmin, setIsFirebaseAuthenticatedAdmin] = useState(false);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [manualImageUrl, setManualImageUrl] = useState<string>('');
+
+  useEffect(() => {
+    const currentUser = auth.currentUser;
+    if (currentUser && currentUser.email === ADMIN_EMAIL) {
+      setIsFirebaseAuthenticatedAdmin(true);
+    } else {
+      setIsFirebaseAuthenticatedAdmin(false);
+      toast({
+        title: "Authentication Error",
+        description: "Admin user not authenticated. You cannot add products.",
+        variant: "destructive",
+      });
+      // Optionally redirect if not admin
+      // router.push('/admin/login'); 
+    }
+  }, [toast, router]);
 
 
   useEffect(() => {
@@ -60,18 +79,14 @@ export default function AddProductPage() {
       };
       reader.readAsDataURL(imageFile);
     } else {
-      // If no file is selected, the preview should rely on manualImageUrl or formData.imageUrl
       if (manualImageUrl) {
          setImagePreviewUrl(manualImageUrl);
          setFormData(prev => ({...prev, imageUrl: manualImageUrl}));
       } else if (formData.imageUrl && !formData.imageUrl.startsWith('data:image')) {
-        // if formData.imageUrl is a web URL (not a data URL from previous file upload)
         setImagePreviewUrl(formData.imageUrl);
       } else if (!formData.imageUrl) {
-        // If formData.imageUrl is also empty or a dataURL (which means imageFile was cleared)
         setImagePreviewUrl(null);
       }
-      // If formData.imageUrl is already a data: URL from a previous file, keep it for preview unless manualImageUrl is set
     }
   }, [imageFile, manualImageUrl, formData.imageUrl]);
 
@@ -90,11 +105,8 @@ export default function AddProductPage() {
     const url = e.target.value;
     setManualImageUrl(url);
     setFormData(prev => ({ ...prev, imageUrl: url }));
-    if (url) { // If user types a URL, clear any selected file
+    if (url) { 
       setImageFile(null);
-      // setImagePreviewUrl(url); // Preview updates via useEffect
-    } else if (!imageFile) { // If URL is cleared and no file, clear preview
-      // setImagePreviewUrl(null); // Preview updates via useEffect
     }
   };
   
@@ -102,11 +114,9 @@ export default function AddProductPage() {
     const file = e.target.files?.[0];
     if (file) {
       setImageFile(file);
-      setManualImageUrl(''); // Clear manual URL input if a file is chosen
-      // Preview and formData.imageUrl update via useEffect
+      setManualImageUrl(''); 
     } else {
       setImageFile(null);
-      // If file is cleared, formData.imageUrl should fall back to manualImageUrl or be empty
       setFormData(prev => ({ ...prev, imageUrl: manualImageUrl }));
     }
   };
@@ -117,6 +127,10 @@ export default function AddProductPage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!isFirebaseAuthenticatedAdmin) {
+      toast({ title: "Action Denied", description: "Admin not authenticated. Cannot add product.", variant: "destructive"});
+      return;
+    }
     setIsLoading(true);
 
     if (!formData.name || !formData.price || !formData.category || !formData.brand || !formData.stock) {
@@ -148,15 +162,38 @@ export default function AddProductPage() {
       router.push('/admin/products');
     } catch (error: any) {
       console.error("Error adding product to Firestore:", error);
+      let desc = "Could not add product. ";
+       if (error.code === 'permission-denied') {
+        desc += "Firestore permission denied. Ensure the admin user has write permissions for the 'products' collection and appropriate custom claims if required by security rules.";
+      } else {
+        desc += error.message;
+      }
       toast({
         title: "Error Adding Product",
-        description: error.message || "An unexpected error occurred. Please try again.",
+        description: desc,
         variant: "destructive",
+        duration: 8000,
       });
     } finally {
       setIsLoading(false);
     }
   };
+  
+  if (!isFirebaseAuthenticatedAdmin && !isLoading) { // Check after initial loading attempt
+    return (
+      <div className="space-y-6 text-center py-10">
+         <h1 className="text-2xl font-bold text-destructive">Access Denied</h1>
+         <p className="text-muted-foreground">You must be an authenticated admin to add products.</p>
+         <Button asChild variant="outline" className="mt-4">
+           <Link href="/admin/login">Go to Admin Login</Link>
+         </Button>
+          <Button variant="outline" asChild className="mt-4 ml-2">
+           <Link href="/admin/products">Back to Products</Link>
+         </Button>
+      </div>
+    )
+  }
+
 
   return (
     <div className="space-y-6">
@@ -167,7 +204,7 @@ export default function AddProductPage() {
         </Button>
       <Card className="w-full max-w-2xl mx-auto shadow-xl">
         <CardHeader>
-          <CardTitle className="text-2xl font-bold">Add New Product</CardTitle>
+          <CardTitle className="text-2xl font-bold flex items-center gap-2"><PackagePlus /> Add New Product</CardTitle>
           <CardDescription>Fill in the details for the new product.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -271,7 +308,7 @@ export default function AddProductPage() {
                 <Button type="button" variant="outline" onClick={() => router.push('/admin/products')} disabled={isLoading}>
                     Cancel
                 </Button>
-                <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isLoading}>
+                <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isLoading || !isFirebaseAuthenticatedAdmin}>
                   {isLoading ? 'Adding Product...' : 'Add Product'}
                 </Button>
             </div>
@@ -281,4 +318,5 @@ export default function AddProductPage() {
     </div>
   );
 }
-      
+
+    

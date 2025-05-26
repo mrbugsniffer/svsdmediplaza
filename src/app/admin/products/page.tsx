@@ -10,8 +10,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { useState, useEffect } from 'react';
-import { db } from '@/lib/firebase';
-import { collection, getDocs, deleteDoc, doc, onSnapshot, QuerySnapshot, DocumentData } from 'firebase/firestore';
+import { db, auth } from '@/lib/firebase'; // Import auth
+import { collection, deleteDoc, doc, onSnapshot, QuerySnapshot, DocumentData } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -22,21 +22,36 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  // AlertDialogTrigger, // No longer needed here if Button acts as trigger
 } from "@/components/ui/alert-dialog";
+
+const ADMIN_EMAIL = 'admin@gmail.com'; // Define admin email constant
 
 export default function AdminProductsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isFirebaseAuthenticatedAdmin, setIsFirebaseAuthenticatedAdmin] = useState(false);
   const { toast } = useToast();
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
 
   useEffect(() => {
+    const currentUser = auth.currentUser;
+    if (currentUser && currentUser.email === ADMIN_EMAIL) {
+      setIsFirebaseAuthenticatedAdmin(true);
+    } else {
+      setIsFirebaseAuthenticatedAdmin(false);
+      setIsLoading(false);
+      toast({
+        title: "Authentication Error",
+        description: "Admin user not authenticated with Firebase. Product management requires admin login.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
     const productsCollectionRef = collection(db, 'products');
     
-    // Use onSnapshot for real-time updates
     const unsubscribe = onSnapshot(productsCollectionRef, (snapshot: QuerySnapshot<DocumentData>) => {
       const productsData = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -46,11 +61,17 @@ export default function AdminProductsPage() {
       setIsLoading(false);
     }, (error) => {
       console.error("Error fetching products from Firestore:", error);
-      toast({ title: "Error", description: "Failed to fetch products.", variant: "destructive" });
+      let desc = "Failed to fetch products. ";
+      if (error.code === 'permission-denied') {
+        desc += "Firestore permission denied. Ensure the admin user has read access to the 'products' collection and appropriate custom claims if required by security rules.";
+      } else {
+        desc += error.message;
+      }
+      toast({ title: "Error Fetching Products", description: desc, variant: "destructive", duration: 8000 });
       setIsLoading(false);
     });
 
-    return () => unsubscribe(); // Cleanup listener on component unmount
+    return () => unsubscribe();
   }, [toast]);
 
   const filteredProducts = products.filter(product => 
@@ -60,29 +81,54 @@ export default function AdminProductsPage() {
   );
 
   const confirmDeleteProduct = (product: Product) => {
+    if (!isFirebaseAuthenticatedAdmin) {
+      toast({ title: "Action Denied", description: "Admin not authenticated. Cannot delete product.", variant: "destructive"});
+      return;
+    }
     setProductToDelete(product);
   };
 
   const handleDeleteProduct = async () => {
-    if (!productToDelete) return;
+    if (!productToDelete || !isFirebaseAuthenticatedAdmin) {
+        toast({ title: "Action Denied", description: "Admin not authenticated or no product selected. Cannot delete.", variant: "destructive"});
+        setProductToDelete(null);
+        return;
+    }
     try {
       await deleteDoc(doc(db, 'products', productToDelete.id));
       toast({
         title: "Product Deleted",
         description: `${productToDelete.name} has been successfully deleted.`,
       });
-      setProductToDelete(null); // Close dialog
-      // Real-time listener will update the list
-    } catch (error) {
+      // Real-time listener will update the list, so no manual state update needed here
+    } catch (error: any) {
       console.error("Error deleting product from Firestore:", error);
+      let desc = "Could not delete product. ";
+       if (error.code === 'permission-denied') {
+        desc += "Firestore permission denied. Ensure the admin user has delete permissions for the 'products' collection and appropriate custom claims if required by security rules.";
+      } else {
+        desc += error.message;
+      }
       toast({
         title: "Error Deleting Product",
-        description: "An unexpected error occurred. Please try again.",
+        description: desc,
         variant: "destructive",
+        duration: 8000,
       });
-      setProductToDelete(null);
+    } finally {
+      setProductToDelete(null); // Close dialog
     }
   };
+  
+  if (!isFirebaseAuthenticatedAdmin && !isLoading) {
+    return (
+      <div className="space-y-6 text-center py-10">
+         <h1 className="text-2xl font-bold text-destructive">Authentication Error</h1>
+         <p className="text-muted-foreground">Admin user is not authenticated with Firebase. Please re-login to manage products.</p>
+         <Button asChild><Link href="/admin/login">Go to Admin Login</Link></Button>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -119,7 +165,7 @@ export default function AdminProductsPage() {
             <div className="overflow-auto">
                 {isLoading ? (
                     <div className="flex justify-center items-center py-10">
-                        <Package size={32} className="animate-pulse mr-2" />
+                        <Package size={32} className="animate-pulse mr-2 text-primary" />
                         <p>Loading products...</p>
                     </div>
                 ) : (
@@ -161,10 +207,6 @@ export default function AdminProductsPage() {
                                     <span className="sr-only">Edit {product.name}</span>
                                 </Link>
                             </Button>
-                            {/* 
-                              The Button now directly triggers the dialog via confirmDeleteProduct 
-                              which updates the productToDelete state.
-                            */}
                             <Button
                             variant="outline"
                             size="icon"
@@ -180,7 +222,9 @@ export default function AdminProductsPage() {
                     )) : (
                         <TableRow>
                             <TableCell colSpan={7} className="text-center h-24">
-                                {products.length === 0 ? "No products found. Add your first product!" : "No products found matching your search."}
+                                {products.length === 0 && !isLoading ? "No products found. Add your first product!" : ""}
+                                {products.length > 0 && filteredProducts.length === 0 && !isLoading ? "No products found matching your search." : ""}
+                                {!isLoading && products.length === 0 && <Package size={24} className="mx-auto mb-1 text-muted-foreground"/>}
                             </TableCell>
                         </TableRow>
                     )}
@@ -210,3 +254,5 @@ export default function AdminProductsPage() {
     </div>
   );
 }
+
+    

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, use, ChangeEvent, FormEvent } from 'react'; // Added specific event types
+import { useState, useEffect, use, ChangeEvent, FormEvent } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,11 +13,13 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { mockCategories, mockBrands } from '@/lib/mock-data';
 import Link from 'next/link';
-import { ChevronLeft, Package, UploadCloud } from 'lucide-react';
-import { db } from '@/lib/firebase';
+import { ChevronLeft, Package, UploadCloud, Edit3Icon } from 'lucide-react';
+import { db, auth } from '@/lib/firebase'; // Import auth
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import type { Product } from '@/types';
 import NextImage from 'next/image'; 
+
+const ADMIN_EMAIL = 'admin@gmail.com'; // Define admin email constant
 
 interface ProductFormData {
   name: string;
@@ -33,25 +35,39 @@ interface ProductFormData {
 
 export default function EditProductPage() {
   const router = useRouter();
-  // Correctly use React.use with useParams for dynamic routes in Client Components
   const paramsPromise = useParams(); 
-  const resolvedParams = use(paramsPromise as any) as { id?: string }; // Ensure id can be undefined initially
-
+  const resolvedParams = use(paramsPromise as any) as { id?: string }; 
   const { toast } = useToast();
-  const productId = resolvedParams?.id; // productId can be undefined if params are not resolved yet or id is missing
+  const productId = resolvedParams?.id;
 
   const [formData, setFormData] = useState<ProductFormData | null>(null);
   const [originalProductName, setOriginalProductName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isFirebaseAuthenticatedAdmin, setIsFirebaseAuthenticatedAdmin] = useState(false);
   
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [manualImageUrlInput, setManualImageUrlInput] = useState<string>('');
 
+  useEffect(() => {
+    const currentUser = auth.currentUser;
+    if (currentUser && currentUser.email === ADMIN_EMAIL) {
+      setIsFirebaseAuthenticatedAdmin(true);
+    } else {
+      setIsFirebaseAuthenticatedAdmin(false);
+      toast({
+        title: "Authentication Error",
+        description: "Admin user not authenticated. You cannot edit products.",
+        variant: "destructive",
+      });
+      // Optionally redirect or disable form if not admin
+    }
+  }, [toast]);
+
 
   useEffect(() => {
-    if (productId) {
+    if (productId && isFirebaseAuthenticatedAdmin) { // Only fetch if admin and productId exists
       const fetchProduct = async () => {
         setIsLoading(true);
         try {
@@ -60,7 +76,7 @@ export default function EditProductPage() {
 
           if (productSnap.exists()) {
             const productData = productSnap.data() as Product;
-            const fetchedFormData: ProductFormData = { // Ensure type for fetchedFormData
+            const fetchedFormData: ProductFormData = {
               name: productData.name,
               description: productData.description,
               price: productData.price.toString(),
@@ -99,13 +115,15 @@ export default function EditProductPage() {
         }
       };
       fetchProduct();
-    } else if (resolvedParams && !productId) { // If params are resolved but no ID, means invalid route or redirect
+    } else if (resolvedParams && !productId) { 
         toast({ title: "Error", description: "Product ID is missing in URL.", variant: "destructive" });
         router.push('/admin/products');
         setIsLoading(false);
+    } else if (!isFirebaseAuthenticatedAdmin && productId) {
+        // If not admin but product ID exists, set loading to false to show access denied message
+        setIsLoading(false);
     }
-    // Add resolvedParams to dependency if its resolution should trigger refetch, though productId covers it.
-  }, [productId, router, toast, resolvedParams]); 
+  }, [productId, router, toast, resolvedParams, isFirebaseAuthenticatedAdmin]); 
 
 
   useEffect(() => {
@@ -172,6 +190,10 @@ export default function EditProductPage() {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!formData || !productId) return; 
+    if (!isFirebaseAuthenticatedAdmin) {
+      toast({ title: "Action Denied", description: "Admin not authenticated. Cannot update product.", variant: "destructive"});
+      return;
+    }
     setIsSubmitting(true);
 
     if (!formData.name || !formData.price || !formData.category || !formData.brand || !formData.stock) {
@@ -202,15 +224,37 @@ export default function EditProductPage() {
       router.push('/admin/products');
     } catch (error: any) {
       console.error("Error updating product in Firestore:", error);
+       let desc = "Could not update product. ";
+       if (error.code === 'permission-denied') {
+        desc += "Firestore permission denied. Ensure the admin user has update permissions for the 'products' collection and appropriate custom claims if required by security rules.";
+      } else {
+        desc += error.message;
+      }
       toast({
         title: "Error Updating Product",
-        description: error.message || "An unexpected error occurred. Please try again.",
+        description: desc,
         variant: "destructive",
+        duration: 8000,
       });
     } finally {
       setIsSubmitting(false);
     }
   };
+  
+  if (!isFirebaseAuthenticatedAdmin && !isLoading) {
+    return (
+      <div className="space-y-6 text-center py-10">
+         <h1 className="text-2xl font-bold text-destructive">Access Denied</h1>
+         <p className="text-muted-foreground">You must be an authenticated admin to edit products.</p>
+         <Button asChild variant="outline" className="mt-4">
+           <Link href="/admin/login">Go to Admin Login</Link>
+         </Button>
+          <Button variant="outline" asChild className="mt-4 ml-2">
+           <Link href="/admin/products">Back to Products</Link>
+         </Button>
+      </div>
+    )
+  }
 
   if (isLoading) {
     return (
@@ -234,7 +278,7 @@ export default function EditProductPage() {
         </Button>
       <Card className="w-full max-w-2xl mx-auto shadow-xl">
         <CardHeader>
-          <CardTitle className="text-2xl font-bold">Edit Product</CardTitle>
+          <CardTitle className="text-2xl font-bold flex items-center gap-2"><Edit3Icon /> Edit Product</CardTitle>
           <CardDescription>Modify the details for &quot;{originalProductName || formData.name}&quot;.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -339,7 +383,7 @@ export default function EditProductPage() {
                  <Button type="button" variant="outline" onClick={() => router.push('/admin/products')} disabled={isSubmitting}>
                     Cancel
                 </Button>
-                <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isSubmitting || isLoading}>
+                <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isSubmitting || isLoading || !isFirebaseAuthenticatedAdmin}>
                   {isSubmitting ? 'Saving Changes...' : 'Save Changes'}
                 </Button>
             </div>
@@ -349,3 +393,5 @@ export default function EditProductPage() {
     </div>
   );
 }
+
+    
