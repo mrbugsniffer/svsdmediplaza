@@ -1,8 +1,8 @@
 
 'use client';
 
-import { use, useEffect, useState, ChangeEvent, FormEvent } from 'react'; // Added specific event types
-import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useState, ChangeEvent, FormEvent } from 'react';
+import { useRouter } from 'next/navigation'; // useParams is no longer needed here
 import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import type { Order, CartItem } from '@/types';
@@ -26,12 +26,9 @@ import {
 
 const orderStatusOptions: Order['status'][] = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'];
 
-
-export default function AdminOrderDetailPage() {
-  // Correctly use React.use with useParams for dynamic routes in Client Components
-  const paramsAsPromise = useParams();
-  const resolvedParams = use(paramsAsPromise as any) as { orderId?: string }; // Ensure orderId can be undefined
-  const orderId = resolvedParams?.orderId;
+// Page components receive params as props.
+export default function AdminOrderDetailPage({ params }: { params: { orderId?: string } }) {
+  const orderId = params?.orderId; // Get orderId directly from props
   const router = useRouter();
   const { toast } = useToast();
 
@@ -55,28 +52,29 @@ export default function AdminOrderDetailPage() {
               ...data,
               orderDate: data.orderDate?.toDate ? data.orderDate.toDate() : new Date(data.orderDate),
               createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt),
-              updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : undefined, // Handle optional updatedAt
+              updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : undefined,
             } as Order;
             setOrder(fetchedOrder);
             setSelectedStatus(fetchedOrder.status);
           } else {
-            toast({ title: "Error", description: "Order not found.", variant: "destructive" });
+            toast({ title: "Error", description: `Order with ID ${orderId} not found.`, variant: "destructive" });
             setOrder(null);
           }
         } catch (error) {
           console.error("Error fetching order from Firestore:", error);
           toast({ title: "Error", description: "Failed to fetch order details.", variant: "destructive" });
+          setOrder(null);
         } finally {
           setIsLoading(false);
         }
       };
       fetchOrder();
-    } else if (resolvedParams && !orderId) { // If params are resolved but no ID
+    } else { // If orderId is not available from params
         setIsLoading(false);
-        toast({ title: "Error", description: "Order ID is missing in URL.", variant: "destructive" });
-        router.push('/admin/orders');
+        toast({ title: "Error", description: "Order ID is missing.", variant: "destructive" });
+        // Consider if redirect or specific error UI is better here
     }
-  }, [orderId, router, toast, resolvedParams]);
+  }, [orderId, toast]); // Dependency is on the resolved orderId
 
   const handleStatusUpdate = async () => {
     if (!order || !selectedStatus || selectedStatus === order.status) return;
@@ -85,16 +83,16 @@ export default function AdminOrderDetailPage() {
         const orderDocRef = doc(db, 'orders', order.id);
         await updateDoc(orderDocRef, {
             status: selectedStatus,
-            updatedAt: serverTimestamp() 
+            updatedAt: serverTimestamp()
         });
-        setOrder(prevOrder => prevOrder ? { ...prevOrder, status: selectedStatus!, updatedAt: new Date() } : null); // Optimistically update updatedAt
+        setOrder(prevOrder => prevOrder ? { ...prevOrder, status: selectedStatus!, updatedAt: new Date() } : null);
         toast({ title: "Status Updated", description: `Order status changed to ${selectedStatus}.`});
     } catch (error: any) {
         console.error("Error updating order status:", error);
-        toast({ 
-            title: "Error Updating Status", 
-            description: error.message || "Failed to update order status. Check permissions.", 
-            variant: "destructive" 
+        toast({
+            title: "Error Updating Status",
+            description: error.message || "Failed to update order status. Check permissions.",
+            variant: "destructive"
         });
     } finally {
         setIsUpdatingStatus(false);
@@ -106,7 +104,7 @@ export default function AdminOrderDetailPage() {
       case 'Pending': return 'default';
       case 'Processing': return 'secondary';
       case 'Shipped': return 'outline';
-      case 'Delivered': return 'default'; 
+      case 'Delivered': return 'default';
       case 'Cancelled': return 'destructive';
       default: return 'default';
     }
@@ -125,7 +123,7 @@ export default function AdminOrderDetailPage() {
     return (
       <div className="flex flex-col justify-center items-center min-h-[calc(100vh-200px)]">
         <Package size={32} className="text-destructive mb-2" />
-        <p className="text-destructive">Order not found or could not be loaded.</p>
+        <p className="text-destructive">Order with ID <span className='font-mono'>{orderId || "N/A"}</span> not found or could not be loaded.</p>
         <Button variant="outline" asChild className="mt-4">
           <Link href="/admin/orders">
             <ChevronLeft size={16} className="mr-1" /> Back to Orders
@@ -209,8 +207,8 @@ export default function AdminOrderDetailPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Button 
-                onClick={handleStatusUpdate} 
+              <Button
+                onClick={handleStatusUpdate}
                 disabled={isUpdatingStatus || !selectedStatus || selectedStatus === order.status}
                 className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
               >
@@ -218,7 +216,7 @@ export default function AdminOrderDetailPage() {
               </Button>
             </CardContent>
           </Card>
-          
+
           <Card className="shadow-md">
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><ShoppingBag size={22}/>Order Total</CardTitle>
