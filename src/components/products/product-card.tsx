@@ -28,7 +28,7 @@ export function ProductCard({ product }: ProductCardProps) {
   };
 
   if (!product) {
-    return null; // Or a placeholder/loading state
+    return null;
   }
 
   return (
@@ -53,10 +53,10 @@ export function ProductCard({ product }: ProductCardProps) {
             {product.name || 'Unnamed Product'}
           </CardTitle>
         </Link>
-        <CardDescription className="text-[10px] text-muted-foreground mb-1 line-clamp-1">
+        {/* <CardDescription className="text-[10px] text-muted-foreground mb-1 line-clamp-1">
           {product.description || 'No description.'}
-        </CardDescription>
-        <div className="text-[9px] text-muted-foreground mb-0.5">
+        </CardDescription> */}
+        <div className="text-[9px] text-muted-foreground mb-0.5 mt-1"> {/* Added mt-1 for spacing if description is removed */}
           <span className="font-medium text-foreground">{product.brand || 'N/A'}</span> - <span className="italic">{product.category || 'N/A'}</span>
         </div>
         {product.rating && product.rating > 0 && (
@@ -79,7 +79,7 @@ export function ProductCard({ product }: ProductCardProps) {
         <Button
           onClick={handleAddToCart}
           variant="ghost"
-          size="sm" 
+          size="sm"
           className="w-full h-7 text-xs text-primary hover:bg-primary/10 hover:text-primary"
           disabled={!product.stock || product.stock === 0}
         >
