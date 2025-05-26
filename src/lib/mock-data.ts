@@ -6,8 +6,9 @@ import { doc, getDoc, collection, getDocs, query, where, limit, Timestamp } from
 
 export const mockCategories: string[] = [
     "Pain Relief",
-    "Nutritional Drinks & Supplements", // Updated for consistency
+    "Nutritional Drinks & Supplements",
     "Skin Care",
+    "Women Care", // Added Women Care
     "Cold & Flu",
     "Eye Care",
     "Baby Care",
@@ -24,7 +25,8 @@ export const mockBrands: string[] = [
     "HealFast",
     "MediChoice",
     "HealthPlus",
-    "OralFresh"
+    "OralFresh",
+    "FeminaHealth" // Example brand for Women Care
 ];
 
 
@@ -117,4 +119,3 @@ export const getOrderById = async (id: string): Promise<Order | undefined> => {
     return undefined;
   }
 };
-
