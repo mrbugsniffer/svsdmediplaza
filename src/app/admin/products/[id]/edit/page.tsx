@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, use, ChangeEvent, FormEvent } from 'react';
-import { useRouter } from 'next/navigation'; // Removed useParams
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,14 +10,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { mockCategories, mockBrands } from '@/lib/mock-data';
+import { mockBrands } from '@/lib/mock-data'; // Categories are now free-text
 import Link from 'next/link';
 import { ChevronLeft, Package, UploadCloud, Edit3Icon } from 'lucide-react';
 import { db, auth } from '@/lib/firebase';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import type { Product } from '@/types';
-import NextImage from 'next/image'; 
+import NextImage from 'next/image';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 
 const ADMIN_EMAIL = 'admin@gmail.com';
 
@@ -33,16 +34,9 @@ interface ProductFormData {
   rating?: string;
 }
 
-// Page components receive params as props.
-export default function EditProductPage({ params }: { params: { id?: string } }) {
+export default function EditProductPage({ params: paramsAsPromise }: { params: { id?: string } }) {
   const router = useRouter();
-  // Use 'use' hook for params passed as props if they are potentially promise-like
-  // However, for page components, params are usually directly available.
-  // If this page were a child component deeper in the tree AND received params as a promise, 'use' would be needed.
-  // For a top-level page component, params.id should be directly accessible after ensuring params itself is resolved.
-  // To be safe and align with Next.js guidance for params that *could* be promises (especially during transitions),
-  // we still use React.use here.
-  const resolvedParams = use(params as any) as { id?: string }; // Cast to any if params prop type doesn't indicate Promise
+  const resolvedParams = use(paramsAsPromise as any) as { id?: string };
   const { toast } = useToast();
   const productId = resolvedParams?.id;
 
@@ -120,14 +114,14 @@ export default function EditProductPage({ params }: { params: { id?: string } })
         }
       };
       fetchProduct();
-    } else if (!productId && resolvedParams) { 
+    } else if (resolvedParams && !productId) { 
         toast({ title: "Error", description: "Product ID is missing in URL.", variant: "destructive" });
         router.push('/admin/products');
         setIsLoading(false);
     } else if (!isFirebaseAuthenticatedAdmin && productId) {
         setIsLoading(false);
     }
-  }, [productId, router, toast, isFirebaseAuthenticatedAdmin, resolvedParams]); 
+  }, [productId, router, toast, isFirebaseAuthenticatedAdmin]); 
 
 
   useEffect(() => {
@@ -143,7 +137,6 @@ export default function EditProductPage({ params }: { params: { id?: string } })
       reader.readAsDataURL(imageFile);
     } else if (manualImageUrlInput) {
         setImagePreviewUrl(manualImageUrlInput);
-        // Ensure formData.imageUrl is also updated if manual input is the source
         if(formData.imageUrl !== manualImageUrlInput) {
           setFormData(prev => prev ? { ...prev, imageUrl: manualImageUrlInput } : null);
         }
@@ -172,7 +165,7 @@ export default function EditProductPage({ params }: { params: { id?: string } })
     if (!formData) return;
     const url = e.target.value;
     setManualImageUrlInput(url); 
-    setImageFile(null); // Clear file if manual URL is typed
+    setImageFile(null); 
     setFormData(prev => prev ? { ...prev, imageUrl: url } : null);
   };
   
@@ -182,19 +175,15 @@ export default function EditProductPage({ params }: { params: { id?: string } })
     if (file) {
       setImageFile(file); 
       setManualImageUrlInput(''); 
-      // The actual formData.imageUrl will be set in the useEffect for imageFile
     } else { 
       setImageFile(null);
-      // If file is removed, and manualImageUrlInput is also empty, reset imageUrl in formData
-      // Otherwise, if manualImageUrlInput has a value, it would have been set already.
       if (!manualImageUrlInput) {
          setFormData(prev => prev ? { ...prev, imageUrl: '' } : null);
       }
     }
   };
 
-
-  const handleSelectChange = (name: 'category' | 'brand') => (value: string) => {
+  const handleSelectChange = (name: 'brand') => (value: string) => {
     setFormData(prev => prev ? { ...prev, [name]: value } : null);
   };
 
@@ -315,12 +304,7 @@ export default function EditProductPage({ params }: { params: { id?: string } })
             <div className="grid sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                     <Label htmlFor="category">Category</Label>
-                    <Select name="category" onValueChange={handleSelectChange('category')} value={formData.category} disabled={isSubmitting} required>
-                        <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
-                        <SelectContent>
-                            {mockCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
+                    <Input id="category" name="category" value={formData.category} onChange={handleFormInputChange} required disabled={isSubmitting} placeholder="e.g., Pain Relief, Skin Care"/>
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="brand">Brand</Label>
@@ -380,7 +364,6 @@ export default function EditProductPage({ params }: { params: { id?: string } })
                  </div>
             )}
 
-
              <div className="space-y-2">
               <Label htmlFor="rating">Rating (Optional, 1-5)</Label>
               <Input id="rating" name="rating" type="number" step="0.1" min="1" max="5" value={formData.rating || ''} onChange={handleFormInputChange} disabled={isSubmitting} />
@@ -404,3 +387,5 @@ export default function EditProductPage({ params }: { params: { id?: string } })
     </div>
   );
 }
+
+    

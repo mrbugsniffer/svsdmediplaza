@@ -37,8 +37,8 @@ export default function OrderConfirmationPage({ params: paramsAsPromise }: { par
           const orderData = { 
               id: orderSnap.id, 
               ...data,
-              orderDate: data.orderDate?.toDate ? data.orderDate.toDate() : new Date(data.orderDate),
-              createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt),
+              orderDate: data.orderDate?.toDate ? data.orderDate.toDate() : new Date(data.orderDate || Date.now()),
+              createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt || Date.now()),
             } as Order;
           setOrder(orderData);
         } else {
@@ -57,12 +57,11 @@ export default function OrderConfirmationPage({ params: paramsAsPromise }: { par
         fetchOrderDetails();
     } else {
         setLoading(false);
-        // Handle case where orderId might be undefined after use() if params were not resolved
         if(resolvedParams && !resolvedParams.orderId) {
              console.error("Order ID missing after params resolution.");
         }
     }
-  }, [orderId, resolvedParams]);
+  }, [orderId]); 
 
   if (loading) {
     return (
@@ -81,7 +80,7 @@ export default function OrderConfirmationPage({ params: paramsAsPromise }: { par
          <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center">
             <Package size={64} className="text-destructive mb-6" />
             <h1 className="text-3xl font-bold text-foreground mb-4">Order Not Found</h1>
-            <p className="text-muted-foreground mb-8">We couldn't find details for order ID: {orderId || "N/A"}.</p>
+            <p className="text-muted-foreground mb-8">We couldn&apos;t find details for order ID: {orderId || "N/A"}.</p>
             <Button asChild>
                 <Link href="/products">Continue Shopping</Link>
             </Button>
@@ -161,7 +160,6 @@ export default function OrderConfirmationPage({ params: paramsAsPromise }: { par
             </div>
           </div>
 
-
           <div className="flex flex-col sm:flex-row gap-4 justify-center pt-6">
             <Button asChild size="lg" className="bg-accent hover:bg-accent/90 text-accent-foreground">
               <Link href="/products">Continue Shopping</Link>
@@ -175,3 +173,5 @@ export default function OrderConfirmationPage({ params: paramsAsPromise }: { par
     </div>
   );
 }
+
+    

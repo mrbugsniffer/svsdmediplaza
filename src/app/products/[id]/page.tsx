@@ -47,24 +47,16 @@ export default function ProductDetailPage({ params: paramsAsPromise }: { params:
 
           if (fetchedProductData.category) {
             const productsCollectionRef = collection(db, 'products');
-            // Firestore's '!=' and 'not-in' queries have limitations.
-            // A common workaround is to fetch by category and then filter out the current product client-side,
-            // or fetch more than needed and slice. For simplicity, we'll fetch and filter.
-            // We can also use multiple 'where' clauses if an 'id' field exists in the document.
-            // Assuming 'id' is the document ID and not a field in the document.
-            // For a more robust solution, consider structuring data or queries differently if '!=' is critical.
             const relatedQuery = query(
               productsCollectionRef,
               where('category', '==', fetchedProductData.category),
-              // where(documentId(), '!=', fetchedProductData.id), // This syntax is not directly supported in client SDK like this.
-              // We filter client-side or ensure product.id is a field.
-              limit(5) // Fetch a bit more to account for filtering out the current product
+              limit(5) 
             );
             const relatedSnap = await getDocs(relatedQuery);
             const related = relatedSnap.docs
               .map(docData => ({ id: docData.id, ...docData.data() } as Product))
-              .filter(p => p.id !== fetchedProductData.id) // Filter out current product
-              .slice(0, 4); // Take up to 4
+              .filter(p => p.id !== fetchedProductData.id) 
+              .slice(0, 4); 
             setRelatedProducts(related);
           }
         } else {
@@ -76,6 +68,8 @@ export default function ProductDetailPage({ params: paramsAsPromise }: { params:
         let desc = "Failed to load product details.";
         if(error.code === 'failed-precondition' && error.message.includes('requires an index')) {
             desc = "Database setup needed: This query requires a Firestore index. Please check the Firebase console for instructions to create it."
+        } else if (error.code === 'permission-denied') {
+            desc = "Permission denied. Please check Firestore security rules."
         }
         toast({ title: "Error", description: desc, variant: "destructive", duration: 8000 });
         setProduct(null);
@@ -89,7 +83,7 @@ export default function ProductDetailPage({ params: paramsAsPromise }: { params:
     } else {
       setIsLoading(false);
     }
-  }, [productId, toast, resolvedParams]); 
+  }, [productId, toast]); 
 
   if (isLoading) {
     return (
@@ -108,7 +102,7 @@ export default function ProductDetailPage({ params: paramsAsPromise }: { params:
         <Package size={64} className="text-destructive mb-6" />
         <h1 className="text-3xl font-bold text-foreground mb-4">Product Not Found</h1>
         <p className="text-muted-foreground mb-8">
-          Sorry, we couldn't find the product you're looking for.
+          Sorry, we couldn&apos;t find the product you&apos;re looking for.
         </p>
         <Button asChild variant="outline">
           <Link href="/products">
@@ -220,3 +214,5 @@ export default function ProductDetailPage({ params: paramsAsPromise }: { params:
     </div>
   );
 }
+
+    

@@ -53,7 +53,7 @@ export default function AdminOrderDetailPage({ params: paramsAsPromise }: { para
         variant: "destructive",
       });
     }
-  }, [toast, router]);
+  }, [toast]);
 
 
   useEffect(() => {
@@ -100,7 +100,7 @@ export default function AdminOrderDetailPage({ params: paramsAsPromise }: { para
     } else if (!isFirebaseAuthenticatedAdmin && orderId) {
         setIsLoading(false); 
     }
-  }, [orderId, toast, resolvedParams, isFirebaseAuthenticatedAdmin]);
+  }, [orderId, toast, isFirebaseAuthenticatedAdmin]);
 
   const handleStatusUpdate = async () => {
     if (!order || !selectedStatus || selectedStatus === order.status) return;
@@ -324,3 +324,5 @@ export default function AdminOrderDetailPage({ params: paramsAsPromise }: { para
     </div>
   );
 }
+
+    
