@@ -6,7 +6,7 @@ import Image from 'next/image';
 import type { Product } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { ChevronLeft, ShoppingCart, Minus, Plus, Package } from 'lucide-react';
+import { ChevronLeft, ShoppingCart, Minus, Plus, Package, Star } from 'lucide-react';
 import Link from 'next/link';
 import { useCart } from '@/hooks/use-cart';
 import { useToast } from "@/hooks/use-toast";
@@ -17,8 +17,8 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc, collection, query, where, limit, getDocs } from 'firebase/firestore';
 
 export default function ProductDetailPage({ params: paramsAsPromise }: { params: { id: string } }) {
-  const resolvedParams = use(paramsAsPromise as any) as { id?: string }; 
-  const productId = resolvedParams?.id; 
+  const resolvedParams = use(paramsAsPromise as any) as { id?: string };
+  const productId = resolvedParams?.id;
 
   const [product, setProduct] = useState<Product | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
@@ -29,14 +29,17 @@ export default function ProductDetailPage({ params: paramsAsPromise }: { params:
 
   useEffect(() => {
     const fetchProductDetails = async () => {
+      // Ensure productId is available before fetching
       if (!productId) {
         setIsLoading(false);
+        // Only toast if resolvedParams exists but productId is somehow still undefined
+        // This case should be rare if use() suspends correctly.
         if (resolvedParams && !productId) {
-            toast({ title: "Error", description: "Product ID is missing.", variant: "destructive" });
+          toast({ title: "Error", description: "Product ID is missing.", variant: "destructive" });
         }
         return;
       }
-      setIsLoading(true);
+      setIsLoading(true); // Set loading true when fetch starts with a valid productId
       try {
         const productDocRef = doc(db, 'products', productId);
         const productSnap = await getDoc(productDocRef);
@@ -51,13 +54,13 @@ export default function ProductDetailPage({ params: paramsAsPromise }: { params:
               productsCollectionRef,
               where('category', '==', fetchedProductData.category),
               where('id', '!=', fetchedProductData.id),
-              limit(4) 
+              limit(4)
             );
             const relatedSnap = await getDocs(relatedQuery);
             const related = relatedSnap.docs
               .map(docData => ({ id: docData.id, ...docData.data() } as Product))
-              .filter(p => p.id !== fetchedProductData.id) 
-              .slice(0, 4); 
+              .filter(p => p.id !== fetchedProductData.id)
+              .slice(0, 4);
             setRelatedProducts(related);
           }
         } else {
@@ -79,12 +82,20 @@ export default function ProductDetailPage({ params: paramsAsPromise }: { params:
       }
     };
 
+    // Fetch only when productId is definitely available.
+    // `use(paramsAsPromise)` should suspend rendering until `paramsAsPromise` resolves,
+    // so `productId` derived from `resolvedParams` should be available if `paramsAsPromise` resolved to an object with `id`.
     if (productId) {
       fetchProductDetails();
     } else {
+      // If productId is not available even after params should have resolved, set loading to false.
+      // This can happen if the route is malformed or ID is truly missing.
       setIsLoading(false);
+      if (resolvedParams && !productId) { // Only show toast if params resolved but no ID was found
+         toast({ title: "Error", description: "Product ID could not be determined.", variant: "destructive" });
+      }
     }
-  }, [productId, toast]); 
+  }, [productId, toast]); // Dependency only on the primitive productId and stable toast function.
 
   if (isLoading) {
     return (
@@ -103,7 +114,7 @@ export default function ProductDetailPage({ params: paramsAsPromise }: { params:
         <Package size={64} className="text-destructive mb-6" />
         <h1 className="text-3xl font-bold text-foreground mb-4">Product Not Found</h1>
         <p className="text-muted-foreground mb-8">
-          Sorry, we couldn&apos;t find the product you&apos;re looking for.
+          Sorry, we couldn&apos;t find the product you&apos;re looking for. (ID: {productId || 'Unknown'})
         </p>
         <Button asChild variant="outline">
           <Link href="/products">
@@ -135,8 +146,8 @@ export default function ProductDetailPage({ params: paramsAsPromise }: { params:
       </Button>
 
       <Card className="overflow-hidden shadow-xl">
-        <div className="grid md:grid-cols-2 gap-0"> 
-          <div className="relative aspect-[4/3] md:aspect-auto md:min-h-[400px]"> 
+        <div className="grid md:grid-cols-2 gap-0">
+          <div className="relative aspect-[4/3] md:aspect-auto md:min-h-[400px]">
             <Image
               src={product.imageUrl || 'https://placehold.co/600x400.png'}
               alt={product.name}
@@ -154,11 +165,18 @@ export default function ProductDetailPage({ params: paramsAsPromise }: { params:
                 {product.category && <Badge variant="secondary">{product.category}</Badge>}
                 {product.brand && <Badge variant="outline">{product.brand}</Badge>}
               </div>
-              {/* Rating display removed */}
             </CardHeader>
             <CardContent className="p-6 md:p-8 flex-grow">
               <CardDescription className="text-base text-muted-foreground leading-relaxed">{product.description}</CardDescription>
               <p className="text-3xl font-bold text-primary mt-6">₹{product.price.toFixed(2)}</p>
+              {product.mrp && product.mrp > product.price && (
+                <div className="mt-1">
+                  <span className="text-sm text-muted-foreground line-through">MRP: ₹{product.mrp.toFixed(2)}</span>
+                  <span className="ml-2 text-sm font-semibold text-green-600">
+                    ({Math.round(((product.mrp - product.price) / product.mrp) * 100)}% off)
+                  </span>
+                </div>
+              )}
               <p className={`mt-2 text-sm font-medium ${product.stock > 0 ? 'text-green-600' : 'text-red-600'}`}>
                 {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
               </p>
@@ -189,12 +207,19 @@ export default function ProductDetailPage({ params: paramsAsPromise }: { params:
         </div>
       </Card>
 
+      {product.tag && (
+        <div className="my-6 text-center">
+          <Badge variant="default" className="text-lg px-4 py-2">{product.tag}</Badge>
+        </div>
+      )}
+
+
       <Separator className="my-12" />
 
       {relatedProducts.length > 0 && (
         <section>
           <h2 className="text-2xl font-bold text-foreground mb-6">Related Products</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
             {relatedProducts.map((relatedProduct) => (
               <ProductCard key={relatedProduct.id} product={relatedProduct} />
             ))}

@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from '@/components/ui/checkbox';
-import { mockBrands } from '@/lib/mock-data'; 
+import { mockBrands } from '@/lib/mock-data';
 import Link from 'next/link';
 import { ChevronLeft, Package, UploadCloud, Edit3Icon } from 'lucide-react';
 import { db, auth } from '@/lib/firebase';
@@ -31,21 +31,22 @@ interface ProductFormData {
   stock: string;
   imageUrl: string;
   featured: boolean;
-  // rating?: string; // Removed rating
+  mrp?: string;
+  tag?: string;
 }
 
 export default function EditProductPage({ params: paramsAsPromise }: { params: { id?: string } }) {
   const router = useRouter();
   const resolvedParams = use(paramsAsPromise as any) as { id?: string };
-  const { toast } = useToast();
   const productId = resolvedParams?.id;
+  const { toast } = useToast();
 
   const [formData, setFormData] = useState<ProductFormData | null>(null);
   const [originalProductName, setOriginalProductName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFirebaseAuthenticatedAdmin, setIsFirebaseAuthenticatedAdmin] = useState(false);
-  
+
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [manualImageUrlInput, setManualImageUrlInput] = useState<string>('');
@@ -56,17 +57,33 @@ export default function EditProductPage({ params: paramsAsPromise }: { params: {
       setIsFirebaseAuthenticatedAdmin(true);
     } else {
       setIsFirebaseAuthenticatedAdmin(false);
+      // No toast here, let the main effect handle redirection or message if needed
+    }
+  }, []); // Removed toast from here to avoid duplicate messages
+
+  useEffect(() => {
+    if (!isFirebaseAuthenticatedAdmin && productId) {
+      setIsLoading(false);
       toast({
         title: "Authentication Error",
         description: "Admin user not authenticated. You cannot edit products.",
         variant: "destructive",
       });
+      router.push('/admin/login'); // Redirect if not authenticated
+      return;
     }
-  }, [toast]);
 
+    if (!productId) {
+      if (resolvedParams && !resolvedParams.id) { // Ensure params were resolved before showing missing ID
+        toast({ title: "Error", description: "Product ID is missing in URL.", variant: "destructive" });
+        router.push('/admin/products');
+      }
+      setIsLoading(false);
+      return;
+    }
 
-  useEffect(() => {
-    if (productId && isFirebaseAuthenticatedAdmin) {
+    // Proceed only if authenticated and productId is present
+    if (isFirebaseAuthenticatedAdmin) {
       const fetchProduct = async () => {
         setIsLoading(true);
         try {
@@ -84,24 +101,23 @@ export default function EditProductPage({ params: paramsAsPromise }: { params: {
               stock: productData.stock.toString(),
               imageUrl: productData.imageUrl || '',
               featured: productData.featured || false,
-              // rating: productData.rating?.toString() || '', // Removed rating
+              mrp: productData.mrp?.toString() || '',
+              tag: productData.tag || '',
             };
             setFormData(fetchedFormData);
             setOriginalProductName(productData.name);
-            
+
             if (productData.imageUrl) {
-              if (productData.imageUrl.startsWith('data:image')) {
-                setImagePreviewUrl(productData.imageUrl);
-                setManualImageUrlInput(''); 
+              setImagePreviewUrl(productData.imageUrl); // Always set preview from Firestore initially
+              if (!productData.imageUrl.startsWith('data:image')) {
+                setManualImageUrlInput(productData.imageUrl); // If it's a URL, prefill manual input
               } else {
-                setImagePreviewUrl(productData.imageUrl);
-                setManualImageUrlInput(productData.imageUrl);
+                setManualImageUrlInput(''); // If it's a data URL, clear manual input
               }
             } else {
-                setImagePreviewUrl(null);
-                setManualImageUrlInput('');
+              setImagePreviewUrl(null);
+              setManualImageUrlInput('');
             }
-
           } else {
             toast({ title: "Error", description: "Product not found.", variant: "destructive" });
             router.push('/admin/products');
@@ -114,18 +130,12 @@ export default function EditProductPage({ params: paramsAsPromise }: { params: {
         }
       };
       fetchProduct();
-    } else if (resolvedParams && !productId) { 
-        toast({ title: "Error", description: "Product ID is missing in URL.", variant: "destructive" });
-        router.push('/admin/products');
-        setIsLoading(false);
-    } else if (!isFirebaseAuthenticatedAdmin && productId) {
-        setIsLoading(false);
     }
-  }, [productId, router, toast, isFirebaseAuthenticatedAdmin]); 
+  }, [productId, router, toast, isFirebaseAuthenticatedAdmin]); // isFirebaseAuthenticatedAdmin is a key dependency here
 
 
   useEffect(() => {
-    if (!formData) return; 
+    if (!formData) return;
 
     if (imageFile) {
       const reader = new FileReader();
@@ -140,14 +150,12 @@ export default function EditProductPage({ params: paramsAsPromise }: { params: {
         if(formData.imageUrl !== manualImageUrlInput) {
           setFormData(prev => prev ? { ...prev, imageUrl: manualImageUrlInput } : null);
         }
-    } else if (formData.imageUrl && !formData.imageUrl.startsWith('data:image')) {
-        setImagePreviewUrl(formData.imageUrl);
-    } else if (formData.imageUrl && formData.imageUrl.startsWith('data:image') && !imageFile && !manualImageUrlInput) {
+    } else if (formData.imageUrl && !imageFile && !manualImageUrlInput) { // If formData.imageUrl exists from Firestore/initial load
         setImagePreviewUrl(formData.imageUrl);
     } else {
         setImagePreviewUrl(null);
     }
-  }, [imageFile, manualImageUrlInput, formData]); 
+  }, [imageFile, manualImageUrlInput, formData]);
 
 
   const handleFormInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -164,22 +172,23 @@ export default function EditProductPage({ params: paramsAsPromise }: { params: {
   const handleManualImageUrlInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (!formData) return;
     const url = e.target.value;
-    setManualImageUrlInput(url); 
-    setImageFile(null); 
+    setManualImageUrlInput(url);
+    setImageFile(null);
     setFormData(prev => prev ? { ...prev, imageUrl: url } : null);
   };
-  
+
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (!formData) return;
     const file = e.target.files?.[0];
     if (file) {
-      setImageFile(file); 
-      setManualImageUrlInput(''); 
-    } else { 
+      setImageFile(file);
+      setManualImageUrlInput('');
+    } else {
       setImageFile(null);
-      if (!manualImageUrlInput) {
-         setFormData(prev => prev ? { ...prev, imageUrl: '' } : null);
-      }
+      // Revert to manualImageUrlInput if file is deselected, or formData.imageUrl if manual is empty
+      const existingUrl = manualImageUrlInput || formData.imageUrl || '';
+      setFormData(prev => prev ? { ...prev, imageUrl: existingUrl } : null);
+      setImagePreviewUrl(existingUrl);
     }
   };
 
@@ -189,7 +198,7 @@ export default function EditProductPage({ params: paramsAsPromise }: { params: {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!formData || !productId) return; 
+    if (!formData || !productId) return;
     if (!isFirebaseAuthenticatedAdmin) {
       toast({ title: "Action Denied", description: "Admin not authenticated. Cannot update product.", variant: "destructive"});
       return;
@@ -210,10 +219,11 @@ export default function EditProductPage({ params: paramsAsPromise }: { params: {
     try {
       const productDocRef = doc(db, 'products', productId);
       await updateDoc(productDocRef, {
-        ...formData, 
+        ...formData,
         price: parseFloat(formData.price),
         stock: parseInt(formData.stock, 10),
-        // rating: formData.rating ? parseFloat(formData.rating) : null, // Removed rating
+        mrp: formData.mrp && formData.mrp.trim() !== '' ? parseFloat(formData.mrp) : null,
+        tag: formData.tag && formData.tag.trim() !== '' ? formData.tag.trim() : null,
         updatedAt: serverTimestamp(),
       });
 
@@ -226,7 +236,7 @@ export default function EditProductPage({ params: paramsAsPromise }: { params: {
       console.error("Error updating product in Firestore:", error);
        let desc = "Could not update product. ";
        if (error.code === 'permission-denied') {
-        desc += "Firestore permission denied. Ensure the admin user has update permissions for the 'products' collection and appropriate custom claims if required by security rules.";
+        desc += `Firestore permission denied. Ensure the admin user (${ADMIN_EMAIL}) has update permissions and necessary custom claims (e.g., 'admin:true') if required by security rules.`;
       } else {
         desc += error.message;
       }
@@ -234,13 +244,13 @@ export default function EditProductPage({ params: paramsAsPromise }: { params: {
         title: "Error Updating Product",
         description: desc,
         variant: "destructive",
-        duration: 8000,
+        duration: 10000,
       });
     } finally {
       setIsSubmitting(false);
     }
   };
-  
+
   if (!isFirebaseAuthenticatedAdmin && !isLoading) {
     return (
       <div className="space-y-6 text-center py-10">
@@ -266,7 +276,7 @@ export default function EditProductPage({ params: paramsAsPromise }: { params: {
   }
 
   if (!formData) {
-    return <div className="flex justify-center items-center min-h-[calc(100vh-200px)]"><p className="text-destructive">Product data could not be loaded or product ID is invalid.</p></div>;
+    return <div className="flex justify-center items-center min-h-[calc(100vh-200px)]"><p className="text-destructive">Product data could not be loaded or product ID ({productId || 'N/A'}) is invalid.</p></div>;
   }
 
   return (
@@ -293,12 +303,22 @@ export default function EditProductPage({ params: paramsAsPromise }: { params: {
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <Label htmlFor="price">Price</Label>
+                    <Label htmlFor="price">Selling Price (₹)</Label>
                     <Input id="price" name="price" type="number" step="0.01" value={formData.price} onChange={handleFormInputChange} required disabled={isSubmitting} />
                 </div>
+                 <div className="space-y-2">
+                    <Label htmlFor="mrp">MRP (₹) (Optional)</Label>
+                    <Input id="mrp" name="mrp" type="number" step="0.01" value={formData.mrp || ''} onChange={handleFormInputChange} disabled={isSubmitting} placeholder="e.g., 120.00"/>
+                </div>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                     <Label htmlFor="stock">Stock Quantity</Label>
                     <Input id="stock" name="stock" type="number" step="1" value={formData.stock} onChange={handleFormInputChange} required disabled={isSubmitting} />
+                </div>
+                 <div className="space-y-2">
+                    <Label htmlFor="tag">Promotional Tag (Optional)</Label>
+                    <Input id="tag" name="tag" value={formData.tag || ''} onChange={handleFormInputChange} disabled={isSubmitting} placeholder="e.g., Bestseller, 20% Off"/>
                 </div>
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
@@ -319,12 +339,12 @@ export default function EditProductPage({ params: paramsAsPromise }: { params: {
 
             <div className="space-y-2">
               <Label htmlFor="imageFile">Upload New Image (Optional)</Label>
-              <Input 
-                id="imageFile" 
-                name="imageFile" 
-                type="file" 
-                accept="image/*" 
-                onChange={handleFileChange} 
+              <Input
+                id="imageFile"
+                name="imageFile"
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
                 disabled={isSubmitting}
                 className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
               />
@@ -334,16 +354,16 @@ export default function EditProductPage({ params: paramsAsPromise }: { params: {
 
              <div className="space-y-2">
               <Label htmlFor="manualImageUrlInput">Current or New Image URL</Label>
-              <Input 
-                id="manualImageUrlInput" 
-                name="manualImageUrlInput" 
-                value={manualImageUrlInput} 
-                onChange={handleManualImageUrlInputChange} 
-                disabled={isSubmitting || !!imageFile} 
-                placeholder="https://example.com/image.png" 
+              <Input
+                id="manualImageUrlInput"
+                name="manualImageUrlInput"
+                value={manualImageUrlInput}
+                onChange={handleManualImageUrlInputChange}
+                disabled={isSubmitting || !!imageFile}
+                placeholder="https://example.com/image.png"
               />
             </div>
-            
+
             {imagePreviewUrl && (
               <div className="space-y-2">
                 <Label>Image Preview</Label>
@@ -352,7 +372,7 @@ export default function EditProductPage({ params: paramsAsPromise }: { params: {
                 </div>
               </div>
             )}
-             {!imagePreviewUrl && ( 
+             {!imagePreviewUrl && (
                  <div className="space-y-2">
                     <Label>Image Preview</Label>
                     <div className="mt-2 flex items-center justify-center w-full aspect-video max-w-sm border border-dashed rounded-md bg-muted text-muted-foreground">
@@ -364,7 +384,6 @@ export default function EditProductPage({ params: paramsAsPromise }: { params: {
                  </div>
             )}
 
-            {/* Rating input removed */}
             <div className="flex items-center space-x-2">
                 <Checkbox id="featured" name="featured" checked={formData.featured} onCheckedChange={(checked) => setFormData(prev => prev ? { ...prev, featured: Boolean(checked) } : null)} disabled={isSubmitting} />
                 <Label htmlFor="featured" className="font-normal">Mark as Featured Product</Label>

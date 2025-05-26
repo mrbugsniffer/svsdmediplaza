@@ -1,5 +1,5 @@
 
-'use client'; 
+'use client';
 
 import { use, useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
@@ -9,13 +9,13 @@ import Link from "next/link";
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import type { Order, CartItem } from '@/types';
-import { format } from 'date-fns'; 
+import { format } from 'date-fns';
 import Image from 'next/image';
 import { Separator } from '@/components/ui/separator';
 
 export default function OrderConfirmationPage({ params: paramsAsPromise }: { params: { orderId: string } }) {
-  const resolvedParams = use(paramsAsPromise as any) as { orderId?: string }; 
-  const orderId = resolvedParams?.orderId; 
+  const resolvedParams = use(paramsAsPromise as any) as { orderId?: string };
+  const orderId = resolvedParams?.orderId;
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
@@ -24,18 +24,21 @@ export default function OrderConfirmationPage({ params: paramsAsPromise }: { par
     const fetchOrderDetails = async () => {
       if (!orderId) {
         setLoading(false);
-        console.error("Order ID is missing from params.");
+        // Only show error if resolvedParams is available but orderId is not
+        if (resolvedParams && !orderId) {
+          console.error("Order ID is missing from params after resolution.");
+        }
         return;
       }
-      setLoading(true);
+      setLoading(true); // Set loading true when fetch starts
       try {
         const orderDocRef = doc(db, 'orders', orderId);
         const orderSnap = await getDoc(orderDocRef);
 
         if (orderSnap.exists()) {
           const data = orderSnap.data();
-          const orderData = { 
-              id: orderSnap.id, 
+          const orderData = {
+              id: orderSnap.id,
               ...data,
               orderDate: data.orderDate?.toDate ? data.orderDate.toDate() : new Date(data.orderDate || Date.now()),
               createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt || Date.now()),
@@ -56,12 +59,13 @@ export default function OrderConfirmationPage({ params: paramsAsPromise }: { par
     if (orderId) {
         fetchOrderDetails();
     } else {
-        setLoading(false);
-        if(resolvedParams && !resolvedParams.orderId) {
-             console.error("Order ID missing after params resolution.");
-        }
+      // If orderId is not available even after params should have resolved
+      setLoading(false);
+      if (resolvedParams && !orderId) {
+          console.error("Order ID missing after params resolution.");
+      }
     }
-  }, [orderId]); 
+  }, [orderId]); // Dependency only on the primitive orderId
 
   if (loading) {
     return (
@@ -74,7 +78,7 @@ export default function OrderConfirmationPage({ params: paramsAsPromise }: { par
       </div>
     );
   }
-  
+
   if (!order) {
     return (
          <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center">
@@ -107,7 +111,7 @@ export default function OrderConfirmationPage({ params: paramsAsPromise }: { par
             A confirmation email has been sent to <span className="font-medium text-foreground">{order.customerEmail}</span>.
             Please check your inbox (and spam folder, just in case).
           </p>
-          
+
           <div className="p-4 bg-muted/30 rounded-lg border space-y-3">
              <div>
                 <h3 className="font-semibold text-foreground mb-1">Order Placed:</h3>
@@ -173,5 +177,3 @@ export default function OrderConfirmationPage({ params: paramsAsPromise }: { par
     </div>
   );
 }
-
-    

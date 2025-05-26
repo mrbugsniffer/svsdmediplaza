@@ -3,7 +3,7 @@
 
 import { useEffect, useState, ChangeEvent, FormEvent, use } from 'react';
 import { useRouter } from 'next/navigation';
-import { db, auth } from '@/lib/firebase'; 
+import { db, auth } from '@/lib/firebase';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import type { Order, CartItem } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -24,13 +24,12 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-const ADMIN_EMAIL = 'admin@gmail.com'; 
+const ADMIN_EMAIL = 'admin@gmail.com';
 const orderStatusOptions: Order['status'][] = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'];
 
 export default function AdminOrderDetailPage({ params: paramsAsPromise }: { params: { orderId?: string } }) {
   const resolvedParams = use(paramsAsPromise as any) as { orderId?: string };
   const orderId = resolvedParams?.orderId;
-
   const router = useRouter();
   const { toast } = useToast();
 
@@ -47,17 +46,36 @@ export default function AdminOrderDetailPage({ params: paramsAsPromise }: { para
       setIsFirebaseAuthenticatedAdmin(true);
     } else {
       setIsFirebaseAuthenticatedAdmin(false);
-      toast({
-        title: "Authentication Error",
-        description: "Admin user not authenticated. You cannot view or manage order details.",
-        variant: "destructive",
-      });
+      // No toast here, let the main effect handle redirection or message if needed
     }
-  }, [toast]);
-
+  }, []);
 
   useEffect(() => {
-    if (orderId && isFirebaseAuthenticatedAdmin) { 
+    if (!isFirebaseAuthenticatedAdmin && orderId) {
+      setIsLoading(false);
+       toast({
+        title: "Authentication Error",
+        description: "Admin user not authenticated. You cannot view order details.",
+        variant: "destructive",
+      });
+      router.push('/admin/login');
+      return;
+    }
+
+    if (!orderId) {
+      if (resolvedParams && !resolvedParams.orderId) {
+        toast({ title: "Error", description: "Order ID is missing.", variant: "destructive" });
+      } else {
+        // Handle case where orderId might still be undefined after use(params) if the prop itself was malformed.
+        toast({ title: "Error", description: "Order ID could not be determined.", variant: "destructive" });
+      }
+      setIsLoading(false);
+      router.push('/admin/orders'); // Redirect if orderId is not available
+      return;
+    }
+    
+
+    if (isFirebaseAuthenticatedAdmin) {
       setIsLoading(true);
       const fetchOrder = async () => {
         try {
@@ -83,24 +101,19 @@ export default function AdminOrderDetailPage({ params: paramsAsPromise }: { para
           console.error("Error fetching order from Firestore:", error);
           let desc = "Failed to fetch order details. ";
           if (error.code === 'permission-denied') {
-            desc += "Firestore permission denied. Ensure the admin user has read access for this order and appropriate custom claims if required by security rules.";
+            desc += `Firestore permission denied. Ensure the admin user (${ADMIN_EMAIL}) has read access for this order and necessary custom claims (e.g., 'admin:true') if required by security rules.`;
           } else {
             desc += error.message;
           }
-          toast({ title: "Error Fetching Order", description: desc, variant: "destructive", duration: 8000 });
+          toast({ title: "Error Fetching Order", description: desc, variant: "destructive", duration: 10000 });
           setOrder(null);
         } finally {
           setIsLoading(false);
         }
       };
       fetchOrder();
-    } else if (resolvedParams && !orderId) { 
-        setIsLoading(false);
-        toast({ title: "Error", description: "Order ID is missing.", variant: "destructive" });
-    } else if (!isFirebaseAuthenticatedAdmin && orderId) {
-        setIsLoading(false); 
     }
-  }, [orderId, toast, isFirebaseAuthenticatedAdmin]);
+  }, [orderId, toast, isFirebaseAuthenticatedAdmin, router, resolvedParams]);
 
   const handleStatusUpdate = async () => {
     if (!order || !selectedStatus || selectedStatus === order.status) return;
@@ -117,11 +130,11 @@ export default function AdminOrderDetailPage({ params: paramsAsPromise }: { para
         });
         setOrder(prevOrder => prevOrder ? { ...prevOrder, status: selectedStatus!, updatedAt: new Date() } : null);
         toast({ title: "Status Updated", description: `Order status changed to ${selectedStatus}.`});
-    } catch (error: any) {
+    } catch (error: any) { // Added opening brace here
         console.error("Error updating order status:", error);
         let desc = "Failed to update order status. ";
         if (error.code === 'permission-denied') {
-            desc += "Firestore permission denied. Ensure the admin user has update permissions for orders and appropriate custom claims if required by security rules.";
+            desc += `Firestore permission denied. Ensure the admin user (${ADMIN_EMAIL}) has update permissions for orders and necessary custom claims (e.g., 'admin:true') if required by security rules.`;
         } else {
             desc += error.message;
         }
@@ -129,7 +142,7 @@ export default function AdminOrderDetailPage({ params: paramsAsPromise }: { para
             title: "Error Updating Status",
             description: desc,
             variant: "destructive",
-            duration: 8000,
+            duration: 10000,
         });
     } finally {
         setIsUpdatingStatus(false);
@@ -146,8 +159,8 @@ export default function AdminOrderDetailPage({ params: paramsAsPromise }: { para
       default: return 'default';
     }
   };
-  
-  if (!isFirebaseAuthenticatedAdmin && !isLoading) {
+
+  if (!isFirebaseAuthenticatedAdmin && !isLoading) { // Handles the case where auth check finishes before data loading
     return (
       <div className="space-y-6 text-center py-10">
          <h1 className="text-2xl font-bold text-destructive">Access Denied</h1>
@@ -324,5 +337,3 @@ export default function AdminOrderDetailPage({ params: paramsAsPromise }: { para
     </div>
   );
 }
-
-    
