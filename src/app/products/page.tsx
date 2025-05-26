@@ -12,12 +12,13 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, query, where, orderBy, onSnapshot, QuerySnapshot, DocumentData } from 'firebase/firestore';
 import type { Product } from '@/types';
-import { mockCategories, mockBrands } from '@/lib/mock-data'; // Still using for filter options
+import { mockCategories, mockBrands } from '@/lib/mock-data';
 import { useToast } from "@/hooks/use-toast";
+import { useSearchParams } from 'next/navigation';
 
 type SortOption = 'price-asc' | 'price-desc' | 'name-asc' | 'name-desc' | 'featured' | 'rating';
 
-const INITIAL_MAX_PRICE = 500; // Initial max price for slider, can be adjusted
+const INITIAL_MAX_PRICE = 500;
 
 export default function ProductsPage() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
@@ -29,14 +30,18 @@ export default function ProductsPage() {
     searchQuery: '',
   });
   const [sortOption, setSortOption] = useState<SortOption>('featured');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isClient, setIsClient] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     setIsClient(true);
-  }, []);
+    const categoryFromUrl = searchParams.get('category');
+    if (categoryFromUrl) {
+      setFilters(prevFilters => ({ ...prevFilters, category: categoryFromUrl }));
+    }
+  }, [searchParams]);
 
   const isMobile = useIsMobile();
 
@@ -52,9 +57,8 @@ export default function ProductsPage() {
       setAllProducts(productsData);
 
       if (productsData.length > 0) {
-        const newMaxPrice = Math.max(...productsData.map(p => p.price), INITIAL_MAX_PRICE);
+        const newMaxPrice = Math.max(...productsData.map(p => p.price).filter(p => typeof p === 'number'), INITIAL_MAX_PRICE);
         setMaxPrice(newMaxPrice);
-        // Update priceRange filter if its max is lower than newMaxPrice
         setFilters(prevFilters => ({
             ...prevFilters,
             priceRange: [prevFilters.priceRange[0], Math.max(prevFilters.priceRange[1], newMaxPrice)]
@@ -74,9 +78,8 @@ export default function ProductsPage() {
 
 
   const filteredProducts = useMemo(() => {
-    let products = [...allProducts]; // Create a copy to sort
+    let products = [...allProducts];
 
-    // Define the standard categories (excluding "Others") for the "Others" filter logic
     const standardMockCategories = mockCategories.filter(c => c !== "Others");
 
     products = products.filter(product => {
@@ -85,10 +88,9 @@ export default function ProductsPage() {
       const descriptionMatch = product.description?.toLowerCase().includes(searchLower) || false;
       
       const categoryMatch =
-        filters.category === '' // "All Categories"
+        filters.category === ''
           ? true
           : filters.category === 'Others'
-          // Product's category is not empty AND not in the standard list of mockCategories
           ? (product.category && !standardMockCategories.includes(product.category))
           : product.category === filters.category;
       
@@ -123,17 +125,16 @@ export default function ProductsPage() {
   }, [allProducts, filters, sortOption]);
 
   if (!isClient) {
-    // Simplified SSR/prerender skeleton
     return (
       <div className="flex flex-col lg:flex-row gap-6">
         <div className="w-full lg:w-1/4 animate-pulse">
           <div className="p-4 bg-card rounded-xl shadow-lg h-96"></div>
         </div>
         <div className="w-full lg:w-3/4">
-          <div className="h-10 bg-muted rounded w-1/3 mb-4 animate-pulse"></div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="h-10 bg-muted rounded w-1/3 mb-6 animate-pulse"></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {[...Array(8)].map((_, i) => (
-              <div key={i} className="bg-card rounded-xl shadow-lg p-4 animate-pulse h-72"></div>
+              <div key={i} className="bg-card rounded-xl shadow-lg p-2 animate-pulse h-60"></div>
             ))}
           </div>
         </div>
@@ -199,12 +200,7 @@ export default function ProductsPage() {
                       <SelectItem value="name-desc">Name: Z to A</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" className="h-9 w-9" onClick={() => setViewMode('grid')} aria-label="Grid view">
-                      <LayoutGrid size={18} />
-                  </Button>
-                  <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" className="h-9 w-9" onClick={() => setViewMode('list')} aria-label="List view">
-                      <List size={18} />
-                  </Button>
+                  {/* View mode buttons removed */}
               </div>
             </div>
           )}
@@ -215,7 +211,7 @@ export default function ProductsPage() {
                 <p className="text-xl text-muted-foreground">Loading products...</p>
             </div>
           ) : filteredProducts.length > 0 ? (
-            <div className={`grid gap-4 ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4' : 'grid-cols-1'}`}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {filteredProducts.map(product => (
                 <ProductCard key={product.id} product={product} />
               ))}
@@ -233,4 +229,3 @@ export default function ProductsPage() {
     </div>
   );
 }
-
