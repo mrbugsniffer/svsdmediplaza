@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, use, ChangeEvent, FormEvent } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter } from 'next/navigation'; // Removed useParams
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,12 +14,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { mockCategories, mockBrands } from '@/lib/mock-data';
 import Link from 'next/link';
 import { ChevronLeft, Package, UploadCloud, Edit3Icon } from 'lucide-react';
-import { db, auth } from '@/lib/firebase'; // Import auth
+import { db, auth } from '@/lib/firebase';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import type { Product } from '@/types';
 import NextImage from 'next/image'; 
 
-const ADMIN_EMAIL = 'admin@gmail.com'; // Define admin email constant
+const ADMIN_EMAIL = 'admin@gmail.com';
 
 interface ProductFormData {
   name: string;
@@ -33,10 +33,16 @@ interface ProductFormData {
   rating?: string;
 }
 
-export default function EditProductPage() {
+// Page components receive params as props.
+export default function EditProductPage({ params }: { params: { id?: string } }) {
   const router = useRouter();
-  const paramsPromise = useParams(); 
-  const resolvedParams = use(paramsPromise as any) as { id?: string }; 
+  // Use 'use' hook for params passed as props if they are potentially promise-like
+  // However, for page components, params are usually directly available.
+  // If this page were a child component deeper in the tree AND received params as a promise, 'use' would be needed.
+  // For a top-level page component, params.id should be directly accessible after ensuring params itself is resolved.
+  // To be safe and align with Next.js guidance for params that *could* be promises (especially during transitions),
+  // we still use React.use here.
+  const resolvedParams = use(params as any) as { id?: string }; // Cast to any if params prop type doesn't indicate Promise
   const { toast } = useToast();
   const productId = resolvedParams?.id;
 
@@ -61,13 +67,12 @@ export default function EditProductPage() {
         description: "Admin user not authenticated. You cannot edit products.",
         variant: "destructive",
       });
-      // Optionally redirect or disable form if not admin
     }
   }, [toast]);
 
 
   useEffect(() => {
-    if (productId && isFirebaseAuthenticatedAdmin) { // Only fetch if admin and productId exists
+    if (productId && isFirebaseAuthenticatedAdmin) {
       const fetchProduct = async () => {
         setIsLoading(true);
         try {
@@ -115,15 +120,14 @@ export default function EditProductPage() {
         }
       };
       fetchProduct();
-    } else if (resolvedParams && !productId) { 
+    } else if (!productId && resolvedParams) { 
         toast({ title: "Error", description: "Product ID is missing in URL.", variant: "destructive" });
         router.push('/admin/products');
         setIsLoading(false);
     } else if (!isFirebaseAuthenticatedAdmin && productId) {
-        // If not admin but product ID exists, set loading to false to show access denied message
         setIsLoading(false);
     }
-  }, [productId, router, toast, resolvedParams, isFirebaseAuthenticatedAdmin]); 
+  }, [productId, router, toast, isFirebaseAuthenticatedAdmin, resolvedParams]); 
 
 
   useEffect(() => {
@@ -139,6 +143,10 @@ export default function EditProductPage() {
       reader.readAsDataURL(imageFile);
     } else if (manualImageUrlInput) {
         setImagePreviewUrl(manualImageUrlInput);
+        // Ensure formData.imageUrl is also updated if manual input is the source
+        if(formData.imageUrl !== manualImageUrlInput) {
+          setFormData(prev => prev ? { ...prev, imageUrl: manualImageUrlInput } : null);
+        }
     } else if (formData.imageUrl && !formData.imageUrl.startsWith('data:image')) {
         setImagePreviewUrl(formData.imageUrl);
     } else if (formData.imageUrl && formData.imageUrl.startsWith('data:image') && !imageFile && !manualImageUrlInput) {
@@ -164,10 +172,8 @@ export default function EditProductPage() {
     if (!formData) return;
     const url = e.target.value;
     setManualImageUrlInput(url); 
+    setImageFile(null); // Clear file if manual URL is typed
     setFormData(prev => prev ? { ...prev, imageUrl: url } : null);
-    if (url) { 
-      setImageFile(null);
-    }
   };
   
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -176,9 +182,14 @@ export default function EditProductPage() {
     if (file) {
       setImageFile(file); 
       setManualImageUrlInput(''); 
+      // The actual formData.imageUrl will be set in the useEffect for imageFile
     } else { 
       setImageFile(null);
-      setFormData(prev => prev ? { ...prev, imageUrl: manualImageUrlInput || '' } : null);
+      // If file is removed, and manualImageUrlInput is also empty, reset imageUrl in formData
+      // Otherwise, if manualImageUrlInput has a value, it would have been set already.
+      if (!manualImageUrlInput) {
+         setFormData(prev => prev ? { ...prev, imageUrl: '' } : null);
+      }
     }
   };
 
@@ -338,10 +349,10 @@ export default function EditProductPage() {
             </div>
 
              <div className="space-y-2">
-              <Label htmlFor="imageUrl">Current or New Image URL</Label>
+              <Label htmlFor="manualImageUrlInput">Current or New Image URL</Label>
               <Input 
-                id="imageUrl" 
-                name="imageUrl" 
+                id="manualImageUrlInput" 
+                name="manualImageUrlInput" 
                 value={manualImageUrlInput} 
                 onChange={handleManualImageUrlInputChange} 
                 disabled={isSubmitting || !!imageFile} 
@@ -393,5 +404,3 @@ export default function EditProductPage() {
     </div>
   );
 }
-
-    
