@@ -38,45 +38,44 @@ export default function PainReliefProductsPage() {
   }, [categoryName]);
 
   return (
-    <div className="space-y-8">
-      <section className="text-center py-8 bg-gradient-to-r from-red-100 via-orange-50 to-background rounded-xl shadow-md">
-        <Bandage size={48} className="mx-auto text-red-500 mb-4" />
-        <h1 className="text-3xl md:text-4xl font-bold text-foreground">
+    <div className="space-y-6"> {/* Reduced overall vertical spacing */}
+      <section className="text-center py-6 bg-gradient-to-r from-red-100 via-orange-50 to-background rounded-xl shadow-md"> {/* Reduced vertical padding */}
+        <Bandage size={36} className="mx-auto text-red-500 mb-3" /> {/* Reduced icon size and margin */}
+        <h1 className="text-2xl md:text-3xl font-bold text-foreground"> {/* Reduced heading size */}
           {categoryName} Products
         </h1>
-        <p className="text-md text-muted-foreground mt-2">
+        <p className="text-sm text-muted-foreground mt-2"> {/* Reduced paragraph text size */}
           Find effective solutions for pain management and relief.
         </p>
       </section>
 
       {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3"> {/* Reduced grid gap */}
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-card rounded-xl shadow-lg p-2 animate-pulse h-[280px] sm:h-[300px]">
-              <div className="aspect-square bg-muted rounded mb-2"></div>
-              <div className="h-4 bg-muted rounded w-3/4 mb-1"></div>
-              <div className="h-3 bg-muted rounded w-1/2 mb-1"></div>
-              <div className="h-3 bg-muted rounded w-1/3 mb-1.5"></div>
-              <div className="h-6 bg-muted rounded w-full"></div>
+            <div key={i} className="bg-card rounded-xl shadow-lg p-2 animate-pulse h-48 flex flex-col"> {/* Adjusted skeleton height and structure */}
+              <div className="aspect-square bg-muted rounded mb-1.5"></div>
+              <div className="h-3 bg-muted rounded w-3/4 mb-1"></div> {/* Skeleton for Name */}
+              <div className="h-3 bg-muted rounded w-1/2 mb-1.5"></div> {/* Skeleton for Price */}
+              <div className="h-5 bg-muted rounded w-full mt-auto"></div> {/* Skeleton for Button */}
             </div>
           ))}
         </div>
       ) : error ? (
-        <div className="text-center py-10 text-destructive">
-          <Package size={48} className="mx-auto mb-4" />
-          <h3 className="text-2xl font-semibold mb-2">Error Loading Products</h3>
+        <div className="text-center py-8 text-destructive"> {/* Adjusted vertical padding */}
+          <Package size={36} className="mx-auto mb-3" /> {/* Reduced icon size and margin */}
+          <h3 className="text-xl font-semibold mb-2">Error Loading Products</h3> {/* Reduced heading size */}
           <p>{error}</p>
         </div>
       ) : painReliefProducts.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3"> {/* Ensured 5 columns on xl, reduced gap */}
           {painReliefProducts.map(product => (
             <ProductCard key={product.id} product={product} />
           ))}
         </div>
       ) : (
-        <div className="text-center py-10 text-muted-foreground">
-          <Package size={48} className="mx-auto mb-4" />
-          <h3 className="text-2xl font-semibold mb-2">No Products Found in {categoryName}</h3>
+        <div className="text-center py-8 text-muted-foreground"> {/* Adjusted vertical padding */}
+          <Package size={36} className="mx-auto mb-3" /> {/* Reduced icon size and margin */}
+          <h3 className="text-xl font-semibold mb-2">No Products Found in {categoryName}</h3> {/* Reduced heading size */}
           <p>We couldn&apos;t find any products in this category at the moment.</p>
         </div>
       )}
