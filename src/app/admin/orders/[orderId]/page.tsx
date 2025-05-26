@@ -1,8 +1,8 @@
 
 'use client';
 
-import { useEffect, useState, ChangeEvent, FormEvent } from 'react';
-import { useRouter } from 'next/navigation'; // useParams is no longer needed here
+import { useEffect, useState, ChangeEvent, FormEvent, use } from 'react'; // Added 'use'
+import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import type { Order, CartItem } from '@/types';
@@ -27,8 +27,12 @@ import {
 const orderStatusOptions: Order['status'][] = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'];
 
 // Page components receive params as props.
-export default function AdminOrderDetailPage({ params }: { params: { orderId?: string } }) {
-  const orderId = params?.orderId; // Get orderId directly from props
+// Rename `params` to `paramsAsPromise` to indicate it might be a promise.
+export default function AdminOrderDetailPage({ params: paramsAsPromise }: { params: { orderId: string } }) {
+  // Use React.use() to unwrap the params if it's a promise.
+  const resolvedParams = use(paramsAsPromise as any) as { orderId?: string };
+  const orderId = resolvedParams?.orderId;
+
   const router = useRouter();
   const { toast } = useToast();
 
@@ -69,12 +73,11 @@ export default function AdminOrderDetailPage({ params }: { params: { orderId?: s
         }
       };
       fetchOrder();
-    } else { // If orderId is not available from params
+    } else if (resolvedParams && !orderId) { // Check resolvedParams to ensure it's not an initial undefined state
         setIsLoading(false);
         toast({ title: "Error", description: "Order ID is missing.", variant: "destructive" });
-        // Consider if redirect or specific error UI is better here
     }
-  }, [orderId, toast]); // Dependency is on the resolved orderId
+  }, [orderId, toast, resolvedParams]); // Add resolvedParams to dependency array
 
   const handleStatusUpdate = async () => {
     if (!order || !selectedStatus || selectedStatus === order.status) return;
