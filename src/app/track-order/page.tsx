@@ -2,184 +2,187 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { PackageSearch, Package, AlertCircle } from 'lucide-react';
-import { getOrderById } from '@/lib/mock-data'; // We'll keep using this but it now fetches from Firestore
+import { PackageSearch, Package, AlertCircle, ShoppingBag, ListOrdered, LogInIcon } from 'lucide-react';
 import type { Order } from '@/types';
 import { Progress } from '@/components/ui/progress';
 import { format } from 'date-fns';
+import { useAuth } from '@/context/auth-context';
+import { db } from '@/lib/firebase';
+import { collection, query, where, orderBy, onSnapshot, DocumentData } from 'firebase/firestore';
+import Link from 'next/link';
+import { Badge } from '@/components/ui/badge';
 
 const orderStatusSteps = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'];
 
-export default function TrackOrderPage() {
+export default function MyOrdersPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const [orderIdInput, setOrderIdInput] = useState('');
-  const [order, setOrder] = useState<Order | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const { user, loading: authLoading } = useAuth();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const orderIdFromQuery = searchParams.get('orderId');
-    if (orderIdFromQuery) {
-      setOrderIdInput(orderIdFromQuery);
-      handleTrackOrder(orderIdFromQuery);
+    if (authLoading) {
+      setIsLoading(true);
+      return;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]); // Only run when searchParams change
 
-
-  const handleTrackOrder = async (idToTrack?: string) => {
-    const currentOrderId = idToTrack || orderIdInput;
-    if (!currentOrderId.trim()) {
-      setError('Please enter an order ID.');
-      setOrder(null);
+    if (!user) {
+      setIsLoading(false);
+      // Optionally, redirect to login or show a message
+      // router.push('/login?redirect=/track-order'); 
       return;
     }
 
     setIsLoading(true);
     setError(null);
-    setOrder(null);
-    
-    // Update URL with the current order ID without full page reload
-    router.push(`/track-order?orderId=${currentOrderId}`, { scroll: false });
+    const ordersCollectionRef = collection(db, 'orders');
+    const q = query(ordersCollectionRef, where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
 
-    try {
-      // getOrderById now fetches from Firestore
-      const fetchedOrder = await getOrderById(currentOrderId.trim()); 
-      if (fetchedOrder) {
-        setOrder(fetchedOrder);
-      } else {
-        setError('Order not found. Please check the ID and try again.');
-      }
-    } catch (e) {
-      setError('An error occurred while fetching your order. Please try again later.');
-      console.error(e);
-    } finally {
+    const unsubscribe = onSnapshot(q, (snapshot: DocumentData) => {
+      const fetchedOrders = snapshot.docs.map((doc: DocumentData) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          orderDate: data.orderDate?.toDate ? data.orderDate.toDate() : new Date(data.orderDate || Date.now()),
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt || Date.now()),
+        } as Order;
+      });
+      setOrders(fetchedOrders);
       setIsLoading(false);
-    }
-  };
+    }, (err: any) => {
+      console.error("Error fetching user orders:", err);
+      setError("Failed to fetch your orders. Please try again later.");
+      setIsLoading(false);
+    });
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    handleTrackOrder();
-  };
+    return () => unsubscribe();
+  }, [user, authLoading, router]);
 
   const getStatusProgress = (status: Order['status']): number => {
     const currentIndex = orderStatusSteps.indexOf(status);
-    if (currentIndex === -1) return 0;
-    if (status === 'Cancelled') return 0; // Or some other representation for cancelled
+    if (currentIndex === -1 || status === 'Cancelled') return 0;
     if (status === 'Delivered') return 100;
-    return ((currentIndex + 1) / (orderStatusSteps.length -1 )) * 100; // -1 because cancelled is not a "progress" step
+    return ((currentIndex + 1) / (orderStatusSteps.length -1 )) * 100; // -1 for Cancelled
   };
+
+  const getStatusBadgeVariant = (status: Order['status']) => {
+    switch (status) {
+      case 'Pending': return 'default';
+      case 'Processing': return 'secondary';
+      case 'Shipped': return 'outline';
+      case 'Delivered': return 'default'; // Consider a 'success' variant if available
+      case 'Cancelled': return 'destructive';
+      default: return 'default';
+    }
+  };
+
+  if (authLoading || isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)]">
+        <ListOrdered size={48} className="animate-pulse text-primary mb-4" />
+        <p className="text-muted-foreground">Loading your orders...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center">
+        <LogInIcon size={64} className="text-primary mb-6" />
+        <h1 className="text-3xl font-bold text-foreground mb-4">Please Log In</h1>
+        <p className="text-muted-foreground mb-8">You need to be logged in to view your orders.</p>
+        <Button asChild size="lg">
+          <Link href="/login?redirect=/track-order">Login</Link>
+        </Button>
+      </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center">
+        <AlertCircle size={64} className="text-destructive mb-6" />
+        <h1 className="text-3xl font-bold text-foreground mb-4">Error</h1>
+        <p className="text-muted-foreground mb-8">{error}</p>
+        <Button onClick={() => router.refresh()} variant="outline">Try Again</Button>
+      </div>
+    );
+  }
 
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <Card className="shadow-xl">
-        <CardHeader className="text-center">
-          <PackageSearch size={48} className="mx-auto text-primary mb-4" />
-          <CardTitle className="text-3xl font-bold">Track Your Order</CardTitle>
-          <CardDescription>Enter your order ID below to see its status.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-4">
-            <Input
-              type="text"
-              value={orderIdInput}
-              onChange={(e) => setOrderIdInput(e.target.value)}
-              placeholder="Enter Order ID"
-              className="flex-grow text-base"
-              aria-label="Order ID"
-            />
-            <Button type="submit" disabled={isLoading} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-              {isLoading ? 'Tracking...' : 'Track Order'}
-            </Button>
-          </form>
-          {error && (
-            <p className="mt-4 text-sm text-destructive flex items-center gap-2">
-              <AlertCircle size={16} /> {error}
-            </p>
-          )}
-        </CardContent>
-      </Card>
+    <div className="max-w-4xl mx-auto py-8">
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-3xl md:text-4xl font-bold text-foreground flex items-center">
+          <ShoppingBag size={36} className="mr-3 text-primary"/> My Orders
+        </h1>
+         <Button variant="outline" asChild>
+            <Link href="/products">Continue Shopping</Link>
+        </Button>
+      </div>
 
-      {isLoading && (
-         <div className="flex justify-center items-center py-10 mt-8">
-            <Package size={32} className="animate-pulse mr-2 text-primary" />
-            <p>Loading order details...</p>
-        </div>
-      )}
-
-      {!isLoading && order && (
-        <Card className="mt-8 shadow-lg animate-in fade-in duration-500">
+      {orders.length === 0 ? (
+        <Card className="text-center py-12 shadow-md">
           <CardHeader>
-            <CardTitle className="text-2xl">Order Details - {order.id}</CardTitle>
-            <CardDescription>
-              Order placed on: {order.orderDate?.toDate ? format(order.orderDate.toDate(), "MMMM d, yyyy 'at' h:mm a") : 'Date not available'}
-            </CardDescription>
+            <PackageSearch size={48} className="mx-auto text-muted-foreground mb-4" />
+            <CardTitle className="text-2xl">No Orders Yet</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div>
-              <h4 className="font-semibold text-lg mb-2">Status: <span className="text-primary capitalize">{order.status}</span></h4>
-              <Progress value={getStatusProgress(order.status)} className="w-full h-3" />
-              <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                {orderStatusSteps.filter(s => s !== 'Cancelled').map(step => (
-                  <span key={step} className={orderStatusSteps.indexOf(step) <= orderStatusSteps.indexOf(order.status) ? 'font-medium text-foreground' : ''}>
-                    {step}
-                  </span>
-                ))}
-              </div>
-               {order.status === 'Cancelled' && <p className="text-sm text-destructive mt-2">This order has been cancelled.</p>}
-            </div>
-
-            <div>
-              <h4 className="font-semibold text-lg mb-2">Shipping To:</h4>
-              <p className="text-muted-foreground">
-                {order.shippingAddress.fullName}<br />
-                {order.shippingAddress.address}<br />
-                {order.shippingAddress.city}, {order.shippingAddress.postalCode}<br />
-                {order.shippingAddress.country}
-              </p>
-            </div>
-
-            <div>
-              <h4 className="font-semibold text-lg mb-2">Items ({order.items.reduce((acc, item) => acc + item.quantity, 0)}):</h4>
-              <ul className="space-y-2 text-sm max-h-60 overflow-y-auto pr-2">
-                {order.items.map(item => (
-                  <li key={item.id} className="flex justify-between items-center p-2 bg-muted/30 rounded-md">
-                    <div className="flex items-center gap-2">
-                        <Image src={item.imageUrl} alt={item.name} width={32} height={32} className="rounded-sm" data-ai-hint="product thumbnail"/>
-                        <div>
-                            <p className="font-medium text-foreground line-clamp-1">{item.name}</p>
-                            <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
+          <CardContent>
+            <CardDescription>You haven't placed any orders yet. Start shopping to see your orders here.</CardDescription>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-6">
+          {orders.map((order) => (
+            <Card key={order.id} className="shadow-lg hover:shadow-xl transition-shadow">
+              <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3">
+                <div>
+                  <CardTitle className="text-xl hover:text-primary">
+                    <Link href={`/order-confirmation/${order.id}`}>Order ID: {order.id}</Link>
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Placed on: {order.createdAt ? format(order.createdAt, "MMMM d, yyyy 'at' h:mm a") : 'N/A'}
+                  </CardDescription>
+                </div>
+                <Badge variant={getStatusBadgeVariant(order.status)} className="text-sm capitalize h-fit">
+                  {order.status}
+                </Badge>
+              </CardHeader>
+              <CardContent className="space-y-3 pt-3">
+                {order.status !== "Cancelled" && order.status !== "Delivered" && (
+                    <div className="mb-2">
+                        <Progress value={getStatusProgress(order.status)} className="w-full h-2" />
+                        <div className="flex justify-between text-xs text-muted-foreground mt-1 px-1">
+                            {orderStatusSteps.filter(s => s !== 'Cancelled').map(step => (
+                            <span key={step} className={(orderStatusSteps.indexOf(step) <= orderStatusSteps.indexOf(order.status) && order.status !== 'Pending' ) || (order.status ==='Pending' && step === 'Pending') ? 'font-medium text-foreground' : ''}>
+                                {step}
+                            </span>
+                            ))}
                         </div>
                     </div>
-                    <span>${(item.price * item.quantity).toFixed(2)}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </CardContent>
-          <CardFooter className="border-t pt-4">
-            <div className="flex justify-between w-full font-bold text-xl">
-              <span>Total Amount:</span>
-              <span>${order.totalAmount.toFixed(2)}</span>
-            </div>
-          </CardFooter>
-        </Card>
+                )}
+                <div className="text-sm">
+                  <span className="text-muted-foreground">Items:</span> {order.items.reduce((acc, item) => acc + item.quantity, 0)}
+                </div>
+                <div className="text-sm">
+                  <span className="text-muted-foreground">Shipping to:</span> {order.shippingAddress.fullName}, {order.shippingAddress.city}
+                </div>
+              </CardContent>
+              <CardFooter className="flex justify-between items-center border-t pt-4">
+                <span className="text-lg font-bold">Total: ${order.totalAmount.toFixed(2)}</span>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/order-confirmation/${order.id}`}>View Details</Link>
+                </Button>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
       )}
-       {!isLoading && !order && !error && orderIdInput && (
-          <Card className="mt-8 text-center py-10 shadow-md">
-            <CardContent>
-              <Package size={48} className="mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">Enter your order ID above to see details.</p>
-            </CardContent>
-          </Card>
-        )}
     </div>
   );
 }
