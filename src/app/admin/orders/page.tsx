@@ -14,6 +14,8 @@ import Link from 'next/link';
 import { format } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 
+const ADMIN_EMAIL = 'admin@gmail.com'; // Define admin email constant
+
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -61,11 +63,16 @@ export default function AdminOrdersPage() {
 
       let description = "Failed to fetch orders. ";
       if (error.code === 'permission-denied' || error.message.toLowerCase().includes('insufficient permissions')) {
-        description += "Firestore permission denied. Please check your Firestore security rules. Ensure the admin user has read access to the 'orders' collection. If your rules require an 'admin' custom claim, verify it is correctly set for this user in Firebase Authentication.";
+        description += "Firestore permission denied. Please check your Firestore security rules. ";
+        if (currentAuthUser?.email === ADMIN_EMAIL) {
+            description += `Ensure the admin user (${ADMIN_EMAIL}) has the necessary 'admin: true' custom claim set in Firebase Authentication, as this is likely required by your security rules for listing all orders. Custom claims are not set by the frontend login.`;
+        } else {
+            description += "Ensure the authenticated user has read access to the 'orders' collection and necessary custom claims if required by rules.";
+        }
       } else {
         description += error.message;
       }
-      toast({ title: "Error Fetching Orders", description, variant: "destructive", duration: 10000 });
+      toast({ title: "Error Fetching Orders", description, variant: "destructive", duration: 12000 }); // Increased duration
       setIsLoading(false);
     });
 
@@ -157,7 +164,7 @@ export default function AdminOrdersPage() {
                     <TableRow>
                       <TableCell colSpan={6} className="text-center h-24">
                         <PackageSearch size={32} className="mx-auto mb-2 text-muted-foreground"/>
-                        No orders found. This could be due to no orders being placed, or permission issues with Firestore.
+                        No orders found. This could be due to no orders being placed, or permission issues with Firestore. Check console for errors.
                       </TableCell>
                     </TableRow>
                   )}
