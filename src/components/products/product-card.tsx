@@ -49,7 +49,7 @@ export function ProductCard({ product }: ProductCardProps) {
       </CardHeader>
       <CardContent className="p-1.5 flex-grow flex flex-col">
         <Link href={`/products/${product.id || '#'}`} className="block">
-          <CardTitle className="text-[11px] font-semibold mb-0.5 hover:text-primary transition-colors line-clamp-1">
+          <CardTitle className="text-xs font-semibold mb-0.5 hover:text-primary transition-colors line-clamp-1">
             {product.name || 'Unnamed Product'}
           </CardTitle>
         </Link>
