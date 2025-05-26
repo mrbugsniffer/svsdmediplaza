@@ -6,7 +6,7 @@ import { doc, getDoc, collection, getDocs, query, where, limit, Timestamp } from
 
 export const mockCategories: string[] = [
     "Pain Relief",
-    "Vitamins & Supplements",
+    "Nutritional Drinks & Supplements", // Updated for consistency
     "Skin Care",
     "Cold & Flu",
     "Eye Care",
@@ -14,7 +14,7 @@ export const mockCategories: string[] = [
     "Personal Care",
     "Dental Care",
     "First Aid",
-    "Others" // Added "Others" category
+    "Others"
 ];
 
 export const mockBrands: string[] = [
