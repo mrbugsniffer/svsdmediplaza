@@ -32,8 +32,6 @@ export default function MyOrdersPage() {
 
     if (!user) {
       setIsLoading(false);
-      // Optionally, redirect to login or show a message
-      // router.push('/login?redirect=/track-order'); 
       return;
     }
 
@@ -67,7 +65,7 @@ export default function MyOrdersPage() {
     const currentIndex = orderStatusSteps.indexOf(status);
     if (currentIndex === -1 || status === 'Cancelled') return 0;
     if (status === 'Delivered') return 100;
-    return ((currentIndex + 1) / (orderStatusSteps.length -1 )) * 100; // -1 for Cancelled
+    return ((currentIndex + 1) / (orderStatusSteps.length -1 )) * 100; 
   };
 
   const getStatusBadgeVariant = (status: Order['status']) => {
@@ -75,7 +73,7 @@ export default function MyOrdersPage() {
       case 'Pending': return 'default';
       case 'Processing': return 'secondary';
       case 'Shipped': return 'outline';
-      case 'Delivered': return 'default'; // Consider a 'success' variant if available
+      case 'Delivered': return 'default'; 
       case 'Cancelled': return 'destructive';
       default: return 'default';
     }
@@ -174,7 +172,7 @@ export default function MyOrdersPage() {
                 </div>
               </CardContent>
               <CardFooter className="flex justify-between items-center border-t pt-4">
-                <span className="text-lg font-bold">Total: ${order.totalAmount.toFixed(2)}</span>
+                <span className="text-lg font-bold">Total: ₹{order.totalAmount.toFixed(2)}</span>
                 <Button variant="outline" size="sm" asChild>
                   <Link href={`/order-confirmation/${order.id}`}>View Details</Link>
                 </Button>

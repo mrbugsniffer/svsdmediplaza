@@ -2,12 +2,12 @@
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, Package, Users, Activity } from "lucide-react";
+import { DollarSign, Package, Users, Activity } from "lucide-react"; // Kept DollarSign as it's generic
 
 export default function AdminDashboardPage() {
   // Mock data for dashboard - replace with real data fetching
   const stats = [
-    { title: "Total Revenue", value: "$12,345", icon: DollarSign, change: "+5.2%" },
+    { title: "Total Revenue", value: "₹12,345", icon: DollarSign, change: "+5.2%" }, // Using DollarSign still, as Lucide might not have a Rupee icon
     { title: "Total Orders", value: "256", icon: Package, change: "+12" },
     { title: "Active Customers", value: "1,204", icon: Users, change: "+50" },
     { title: "Products in Stock", value: "78", icon: Activity, change: "-3" },
@@ -43,12 +43,11 @@ export default function AdminDashboardPage() {
             <CardDescription>A list of the most recent orders.</CardDescription>
           </CardHeader>
           <CardContent>
-            {/* Placeholder for recent orders list */}
             <p className="text-muted-foreground">Recent orders will be displayed here.</p>
             <ul className="mt-4 space-y-2">
-                <li className="flex justify-between p-2 bg-muted/30 rounded-md text-sm"><span>Order #ORD-00123</span><span>$150.00</span></li>
-                <li className="flex justify-between p-2 bg-muted/30 rounded-md text-sm"><span>Order #ORD-00122</span><span>$75.50</span></li>
-                <li className="flex justify-between p-2 bg-muted/30 rounded-md text-sm"><span>Order #ORD-00121</span><span>$220.75</span></li>
+                <li className="flex justify-between p-2 bg-muted/30 rounded-md text-sm"><span>Order #ORD-00123</span><span>₹1500.00</span></li>
+                <li className="flex justify-between p-2 bg-muted/30 rounded-md text-sm"><span>Order #ORD-00122</span><span>₹755.50</span></li>
+                <li className="flex justify-between p-2 bg-muted/30 rounded-md text-sm"><span>Order #ORD-00121</span><span>₹2200.75</span></li>
             </ul>
           </CardContent>
         </Card>
@@ -58,7 +57,6 @@ export default function AdminDashboardPage() {
             <CardDescription>Common administrative tasks.</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col space-y-2">
-            {/* Placeholder for quick actions */}
             <button className="text-left p-2 hover:bg-muted rounded-md transition-colors">Add New Product</button>
             <button className="text-left p-2 hover:bg-muted rounded-md transition-colors">View All Users</button>
             <button className="text-left p-2 hover:bg-muted rounded-md transition-colors">Site Settings</button>

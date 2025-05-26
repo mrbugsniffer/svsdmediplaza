@@ -3,7 +3,7 @@
 
 import { useEffect, useState, ChangeEvent, FormEvent, use } from 'react';
 import { useRouter } from 'next/navigation';
-import { db, auth } from '@/lib/firebase'; // Import auth
+import { db, auth } from '@/lib/firebase'; 
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import type { Order, CartItem } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -24,10 +24,10 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-const ADMIN_EMAIL = 'admin@gmail.com'; // Define admin email constant
+const ADMIN_EMAIL = 'admin@gmail.com'; 
 const orderStatusOptions: Order['status'][] = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'];
 
-export default function AdminOrderDetailPage({ params: paramsAsPromise }: { params: { orderId: string } }) {
+export default function AdminOrderDetailPage({ params: paramsAsPromise }: { params: { orderId?: string } }) {
   const resolvedParams = use(paramsAsPromise as any) as { orderId?: string };
   const orderId = resolvedParams?.orderId;
 
@@ -52,14 +52,12 @@ export default function AdminOrderDetailPage({ params: paramsAsPromise }: { para
         description: "Admin user not authenticated. You cannot view or manage order details.",
         variant: "destructive",
       });
-      // Optionally redirect if not admin
-      // router.push('/admin/login');
     }
   }, [toast, router]);
 
 
   useEffect(() => {
-    if (orderId && isFirebaseAuthenticatedAdmin) { // Fetch only if admin and orderId exists
+    if (orderId && isFirebaseAuthenticatedAdmin) { 
       setIsLoading(true);
       const fetchOrder = async () => {
         try {
@@ -100,7 +98,7 @@ export default function AdminOrderDetailPage({ params: paramsAsPromise }: { para
         setIsLoading(false);
         toast({ title: "Error", description: "Order ID is missing.", variant: "destructive" });
     } else if (!isFirebaseAuthenticatedAdmin && orderId) {
-        setIsLoading(false); // Done "loading" as we won't fetch due to auth
+        setIsLoading(false); 
     }
   }, [orderId, toast, resolvedParams, isFirebaseAuthenticatedAdmin]);
 
@@ -278,7 +276,7 @@ export default function AdminOrderDetailPage({ params: paramsAsPromise }: { para
             <CardContent>
                  <div className="flex justify-between font-bold text-xl text-primary">
                     <span>Grand Total:</span>
-                    <span>${order.totalAmount.toFixed(2)}</span>
+                    <span>₹{order.totalAmount.toFixed(2)}</span>
                 </div>
             </CardContent>
           </Card>
@@ -315,8 +313,8 @@ export default function AdminOrderDetailPage({ params: paramsAsPromise }: { para
                   </TableCell>
                   <TableCell className="font-medium">{item.name}</TableCell>
                   <TableCell className="text-center">{item.quantity}</TableCell>
-                  <TableCell className="text-right">${item.price.toFixed(2)}</TableCell>
-                  <TableCell className="text-right">${(item.price * item.quantity).toFixed(2)}</TableCell>
+                  <TableCell className="text-right">₹{item.price.toFixed(2)}</TableCell>
+                  <TableCell className="text-right">₹{(item.price * item.quantity).toFixed(2)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -326,5 +324,3 @@ export default function AdminOrderDetailPage({ params: paramsAsPromise }: { para
     </div>
   );
 }
-
-    

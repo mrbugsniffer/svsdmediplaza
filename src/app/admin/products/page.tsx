@@ -10,7 +10,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { useState, useEffect } from 'react';
-import { db, auth } from '@/lib/firebase'; // Import auth
+import { db, auth } from '@/lib/firebase'; 
 import { collection, deleteDoc, doc, onSnapshot, QuerySnapshot, DocumentData } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -24,7 +24,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-const ADMIN_EMAIL = 'admin@gmail.com'; // Define admin email constant
+const ADMIN_EMAIL = 'admin@gmail.com'; 
 
 export default function AdminProductsPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -100,7 +100,6 @@ export default function AdminProductsPage() {
         title: "Product Deleted",
         description: `${productToDelete.name} has been successfully deleted.`,
       });
-      // Real-time listener will update the list, so no manual state update needed here
     } catch (error: any) {
       console.error("Error deleting product from Firestore:", error);
       let desc = "Could not delete product. ";
@@ -116,7 +115,7 @@ export default function AdminProductsPage() {
         duration: 8000,
       });
     } finally {
-      setProductToDelete(null); // Close dialog
+      setProductToDelete(null); 
     }
   };
   
@@ -197,7 +196,7 @@ export default function AdminProductsPage() {
                         <TableCell className="font-medium">{product.name}</TableCell>
                         <TableCell>{product.category}</TableCell>
                         <TableCell>{product.brand}</TableCell>
-                        <TableCell className="text-right">${product.price?.toFixed(2)}</TableCell>
+                        <TableCell className="text-right">₹{product.price?.toFixed(2)}</TableCell>
                         <TableCell className="text-right">{product.stock}</TableCell>
                         <TableCell className="text-center">
                         <div className="flex justify-center gap-2">
@@ -254,5 +253,3 @@ export default function AdminProductsPage() {
     </div>
   );
 }
-
-    

@@ -17,9 +17,8 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc, collection, query, where, limit, getDocs } from 'firebase/firestore';
 
 export default function ProductDetailPage({ params: paramsAsPromise }: { params: { id: string } }) {
-  // Correctly use React.use for unwrapping params prop in Client Components
-  const resolvedParams = use(paramsAsPromise as any) as { id?: string }; // Ensure id can be undefined
-  const productId = resolvedParams?.id; // productId can be undefined
+  const resolvedParams = use(paramsAsPromise as any) as { id?: string }; 
+  const productId = resolvedParams?.id; 
 
   const [product, setProduct] = useState<Product | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
@@ -32,8 +31,7 @@ export default function ProductDetailPage({ params: paramsAsPromise }: { params:
     const fetchProductDetails = async () => {
       if (!productId) {
         setIsLoading(false);
-        // Optionally show a toast or redirect if productId is crucial and missing after params resolution
-        if (resolvedParams && !productId) { // Only if params are resolved but no ID
+        if (resolvedParams && !productId) {
             toast({ title: "Error", description: "Product ID is missing.", variant: "destructive" });
         }
         return;
@@ -49,14 +47,24 @@ export default function ProductDetailPage({ params: paramsAsPromise }: { params:
 
           if (fetchedProductData.category) {
             const productsCollectionRef = collection(db, 'products');
+            // Firestore's '!=' and 'not-in' queries have limitations.
+            // A common workaround is to fetch by category and then filter out the current product client-side,
+            // or fetch more than needed and slice. For simplicity, we'll fetch and filter.
+            // We can also use multiple 'where' clauses if an 'id' field exists in the document.
+            // Assuming 'id' is the document ID and not a field in the document.
+            // For a more robust solution, consider structuring data or queries differently if '!=' is critical.
             const relatedQuery = query(
               productsCollectionRef,
               where('category', '==', fetchedProductData.category),
-              where('id', '!=', fetchedProductData.id), // Firestore query uses 'id' field, not documentID()
-              limit(4)
+              // where(documentId(), '!=', fetchedProductData.id), // This syntax is not directly supported in client SDK like this.
+              // We filter client-side or ensure product.id is a field.
+              limit(5) // Fetch a bit more to account for filtering out the current product
             );
             const relatedSnap = await getDocs(relatedQuery);
-            const related = relatedSnap.docs.map(docData => ({ id: docData.id, ...docData.data() } as Product));
+            const related = relatedSnap.docs
+              .map(docData => ({ id: docData.id, ...docData.data() } as Product))
+              .filter(p => p.id !== fetchedProductData.id) // Filter out current product
+              .slice(0, 4); // Take up to 4
             setRelatedProducts(related);
           }
         } else {
@@ -76,8 +84,12 @@ export default function ProductDetailPage({ params: paramsAsPromise }: { params:
       }
     };
 
-    fetchProductDetails();
-  }, [productId, toast, resolvedParams]); // Add resolvedParams to dependency
+    if (productId) {
+      fetchProductDetails();
+    } else {
+      setIsLoading(false);
+    }
+  }, [productId, toast, resolvedParams]); 
 
   if (isLoading) {
     return (
@@ -128,8 +140,8 @@ export default function ProductDetailPage({ params: paramsAsPromise }: { params:
       </Button>
 
       <Card className="overflow-hidden shadow-xl">
-        <div className="grid md:grid-cols-2 gap-0"> {/* Consider gap-0 or gap-x-0 depending on design */}
-          <div className="relative aspect-[4/3] md:aspect-auto md:min-h-[400px]"> {/* Or keep aspect-square if preferred */}
+        <div className="grid md:grid-cols-2 gap-0"> 
+          <div className="relative aspect-[4/3] md:aspect-auto md:min-h-[400px]"> 
             <Image
               src={product.imageUrl || 'https://placehold.co/600x400.png'}
               alt={product.name}
@@ -152,7 +164,7 @@ export default function ProductDetailPage({ params: paramsAsPromise }: { params:
                   {[...Array(Math.floor(product.rating))].map((_, i) => (
                     <Star key={i} size={20} fill="currentColor" />
                   ))}
-                  {product.rating % 1 !== 0 && <Star size={20} />} {/* For half star representation if needed */}
+                  {product.rating % 1 !== 0 && <Star size={20} />} 
                   {[...Array(5 - Math.ceil(product.rating))].map((_, i) => (
                     <Star key={`empty-${i}`} size={20} className="text-muted-foreground opacity-50" />
                   ))}
@@ -162,7 +174,7 @@ export default function ProductDetailPage({ params: paramsAsPromise }: { params:
             </CardHeader>
             <CardContent className="p-6 md:p-8 flex-grow">
               <CardDescription className="text-base text-muted-foreground leading-relaxed">{product.description}</CardDescription>
-              <p className="text-3xl font-bold text-primary mt-6">${product.price.toFixed(2)}</p>
+              <p className="text-3xl font-bold text-primary mt-6">₹{product.price.toFixed(2)}</p>
               <p className={`mt-2 text-sm font-medium ${product.stock > 0 ? 'text-green-600' : 'text-red-600'}`}>
                 {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
               </p>

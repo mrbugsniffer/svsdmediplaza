@@ -26,8 +26,8 @@ const shippingSchema = z.object({
   fullName: z.string().min(2, "Full name is required"),
   address: z.string().min(5, "Address is required"),
   city: z.string().min(2, "City is required"),
-  postalCode: z.string().min(3, "Postal code is required").regex(/^\d{5}(-\d{4})?$/, "Invalid postal code format"),
-  country: z.string().min(2, "Country is required"),
+  postalCode: z.string().min(3, "Postal code is required").regex(/^\d{6}$/, "Invalid postal code format (6 digits required)"), // Adjusted for common Indian pincode
+  country: z.string().min(2, "Country is required").default("India"), // Default to India
   email: z.string().email("Invalid email address"),
   phone: z.string().optional(),
   saveAsDefaultAddress: z.boolean().optional(),
@@ -47,7 +47,7 @@ export default function CheckoutPage() {
   const shippingForm = useForm<ShippingFormData>({
     resolver: zodResolver(shippingSchema),
     defaultValues: {
-      fullName: '', address: '', city: '', postalCode: '', country: '', email: '', phone: '', saveAsDefaultAddress: true,
+      fullName: '', address: '', city: '', postalCode: '', country: 'India', email: '', phone: '', saveAsDefaultAddress: true,
     }
   });
 
@@ -57,7 +57,6 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (!authLoading && user) {
-      // Pre-fill email if not already set by profile/order fetch
       if (!shippingForm.getValues('email')) {
         shippingForm.setValue('email', user.email || '');
       }
@@ -65,11 +64,9 @@ export default function CheckoutPage() {
          shippingForm.setValue('fullName', user.displayName);
       }
 
-      // Fetch user profile for default shipping address or last order address
       const fetchAddress = async () => {
         let addressToPreFill: ShippingAddress | null = null;
         
-        // 1. Try to get default shipping address from userProfile
         const userProfileRef = doc(db, 'userProfiles', user.uid);
         const userProfileSnap = await getDoc(userProfileRef);
         if (userProfileSnap.exists()) {
@@ -79,7 +76,6 @@ export default function CheckoutPage() {
           }
         }
 
-        // 2. If no default, try to get from last order
         if (!addressToPreFill) {
           const ordersRef = collection(db, 'orders');
           const q = query(ordersRef, where('userId', '==', user.uid), orderBy('createdAt', 'desc'), limit(1));
@@ -94,23 +90,22 @@ export default function CheckoutPage() {
         
         if (addressToPreFill) {
           shippingForm.reset({
-            ...shippingForm.getValues(), // keep existing values like email if already set
+            ...shippingForm.getValues(), 
             fullName: addressToPreFill.fullName || shippingForm.getValues('fullName'),
             address: addressToPreFill.address,
             city: addressToPreFill.city,
             postalCode: addressToPreFill.postalCode,
-            country: addressToPreFill.country,
+            country: addressToPreFill.country || 'India',
             phone: addressToPreFill.phone || '',
-            email: shippingForm.getValues('email') || user.email || '', // Prioritize already set email
-            saveAsDefaultAddress: true, // Default to true if pre-filling
+            email: shippingForm.getValues('email') || user.email || '', 
+            saveAsDefaultAddress: true, 
           });
-        } else if (user.email) { // Ensure email is set from auth if no address found
+        } else if (user.email) { 
              shippingForm.setValue('email', user.email);
         }
       };
       fetchAddress();
     } else if (!authLoading && !user && isClient) {
-      // If not logged in, but trying to checkout, redirect to login
       router.push('/login?redirect=/checkout');
       toast({ title: "Authentication Required", description: "Please login to proceed to checkout.", variant: "destructive" });
     }
@@ -118,7 +113,6 @@ export default function CheckoutPage() {
 
 
   useEffect(() => {
-    // This effect needs to run after isClient is true
     if (isClient && !authLoading && cartItems.length === 0) {
       router.replace('/cart');
       toast({ title: "Your cart is empty", description: "Please add items to your cart before proceeding to checkout.", variant: "destructive" });
@@ -126,8 +120,8 @@ export default function CheckoutPage() {
   }, [cartItems, router, toast, isClient, authLoading]);
 
 
-  const taxRate = 0.08; // 8%
-  const shippingCost = cartTotal > 50 ? 0 : 5.00; // Free shipping over $50
+  const taxRate = 0.08; 
+  const shippingCost = cartTotal > 500 ? 0 : 50.00; // Free shipping over ₹500
   const taxes = cartTotal * taxRate;
   const finalTotal = cartTotal + taxes + shippingCost;
 
@@ -152,7 +146,7 @@ export default function CheckoutPage() {
     try {
       const orderData = {
         userId: user.uid,
-        customerEmail: formData.email, // Use email from form
+        customerEmail: formData.email, 
         items: cartItems,
         totalAmount: finalTotal,
         orderDate: serverTimestamp(),
@@ -164,7 +158,6 @@ export default function CheckoutPage() {
       const ordersCollectionRef = collection(db, 'orders');
       const docRef = await addDoc(ordersCollectionRef, orderData);
 
-      // Save as default shipping address if checked
       if (formData.saveAsDefaultAddress) {
         const userProfileRef = doc(db, 'userProfiles', user.uid);
         const userProfileData: Partial<UserProfile> = {
@@ -174,9 +167,8 @@ export default function CheckoutPage() {
           defaultShippingAddress: currentShippingAddress,
           updatedAt: serverTimestamp(),
         };
-        // Use setDoc with merge: true to create or update
         await setDoc(userProfileRef, userProfileData, { merge: true }); 
-        if (! (await getDoc(userProfileRef)).exists()) { // if it was a new doc, set createdAt
+        if (! (await getDoc(userProfileRef)).exists()) { 
             await setDoc(userProfileRef, { createdAt: serverTimestamp()}, {merge: true});
         }
       }
@@ -197,7 +189,7 @@ export default function CheckoutPage() {
     }
   };
   
-  if (!isClient || authLoading || (isClient && !user && !authLoading)) { // Show loading until client-side checks are done and user status is known
+  if (!isClient || authLoading || (isClient && !user && !authLoading)) { 
     return (
       <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
           <p className="text-lg text-muted-foreground">Loading checkout...</p>
@@ -235,7 +227,7 @@ export default function CheckoutPage() {
                   <FormField control={shippingForm.control} name="address" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Street Address</FormLabel>
-                      <FormControl><Input placeholder="123 Main St" {...field} /></FormControl>
+                      <FormControl><Input placeholder="123 Main St, Apt 4B" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
@@ -243,14 +235,14 @@ export default function CheckoutPage() {
                     <FormField control={shippingForm.control} name="city" render={({ field }) => (
                       <FormItem>
                         <FormLabel>City</FormLabel>
-                        <FormControl><Input placeholder="Anytown" {...field} /></FormControl>
+                        <FormControl><Input placeholder="Mumbai" {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
                     <FormField control={shippingForm.control} name="postalCode" render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Postal Code</FormLabel>
-                        <FormControl><Input placeholder="12345" {...field} /></FormControl>
+                        <FormLabel>Postal Code (Pincode)</FormLabel>
+                        <FormControl><Input placeholder="400001" {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
@@ -258,14 +250,14 @@ export default function CheckoutPage() {
                   <FormField control={shippingForm.control} name="country" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Country</FormLabel>
-                      <FormControl><Input placeholder="United States" {...field} /></FormControl>
+                      <FormControl><Input placeholder="India" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
                    <FormField control={shippingForm.control} name="phone" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Phone (Optional)</FormLabel>
-                      <FormControl><Input type="tel" placeholder="(555) 123-4567" {...field} /></FormControl>
+                      <FormControl><Input type="tel" placeholder="+91 XXXXXXXXXX" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
@@ -313,7 +305,7 @@ export default function CheckoutPage() {
                            <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
                        </div>
                     </div>
-                    <span className="font-medium">${(item.price * item.quantity).toFixed(2)}</span>
+                    <span className="font-medium">₹{(item.price * item.quantity).toFixed(2)}</span>
                   </div>
                 ))}
               </div>
@@ -321,20 +313,20 @@ export default function CheckoutPage() {
               <div className="space-y-2 mt-4">
                  <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Items ({cartCount})</span>
-                    <span>${cartTotal.toFixed(2)}</span>
+                    <span>₹{cartTotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Shipping</span>
-                  <span>{shippingCost > 0 ? `$${shippingCost.toFixed(2)}` : 'Free'}</span>
+                  <span>{shippingCost > 0 ? `₹${shippingCost.toFixed(2)}` : 'Free'}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Taxes (8%)</span>
-                  <span>${taxes.toFixed(2)}</span>
+                  <span>₹{taxes.toFixed(2)}</span>
                 </div>
                 <Separator />
                 <div className="flex justify-between font-bold text-lg">
                   <span>Total</span>
-                  <span>${finalTotal.toFixed(2)}</span>
+                  <span>₹{finalTotal.toFixed(2)}</span>
                 </div>
               </div>
             </CardContent>

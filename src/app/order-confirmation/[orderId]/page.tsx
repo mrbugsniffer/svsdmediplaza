@@ -14,9 +14,8 @@ import Image from 'next/image';
 import { Separator } from '@/components/ui/separator';
 
 export default function OrderConfirmationPage({ params: paramsAsPromise }: { params: { orderId: string } }) {
-  // Correctly use React.use for unwrapping params prop in Client Components
   const resolvedParams = use(paramsAsPromise as any) as { orderId?: string }; 
-  const orderId = resolvedParams?.orderId; // orderId can be undefined if params are not resolved or missing
+  const orderId = resolvedParams?.orderId; 
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
@@ -26,7 +25,6 @@ export default function OrderConfirmationPage({ params: paramsAsPromise }: { par
       if (!orderId) {
         setLoading(false);
         console.error("Order ID is missing from params.");
-        // Optionally, redirect or show a more specific error to the user
         return;
       }
       setLoading(true);
@@ -39,13 +37,12 @@ export default function OrderConfirmationPage({ params: paramsAsPromise }: { par
           const orderData = { 
               id: orderSnap.id, 
               ...data,
-              // Ensure date fields are correctly handled
               orderDate: data.orderDate?.toDate ? data.orderDate.toDate() : new Date(data.orderDate),
               createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt),
             } as Order;
           setOrder(orderData);
         } else {
-          console.error("Order not found in Firestore.");
+          console.error("Order not found in Firestore for ID:", orderId);
           setOrder(null);
         }
       } catch (error) {
@@ -56,8 +53,16 @@ export default function OrderConfirmationPage({ params: paramsAsPromise }: { par
       }
     };
 
-    fetchOrderDetails();
-  }, [orderId]); // Dependency on resolved orderId
+    if (orderId) {
+        fetchOrderDetails();
+    } else {
+        setLoading(false);
+        // Handle case where orderId might be undefined after use() if params were not resolved
+        if(resolvedParams && !resolvedParams.orderId) {
+             console.error("Order ID missing after params resolution.");
+        }
+    }
+  }, [orderId, resolvedParams]);
 
   if (loading) {
     return (
@@ -131,13 +136,13 @@ export default function OrderConfirmationPage({ params: paramsAsPromise }: { par
                                 <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
                             </div>
                         </div>
-                        <span className="font-medium text-foreground">${(item.price * item.quantity).toFixed(2)}</span>
+                        <span className="font-medium text-foreground">₹{(item.price * item.quantity).toFixed(2)}</span>
                     </div>
                 ))}
             </div>
             <div className="flex justify-between font-bold text-lg mt-4 pt-3 border-t">
                 <span>Total Amount:</span>
-                <span>${order.totalAmount.toFixed(2)}</span>
+                <span>₹{order.totalAmount.toFixed(2)}</span>
             </div>
           </div>
 

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useCart } from '@/hooks/use-cart';
@@ -38,7 +39,7 @@ export default function CartPage() {
 
   // Mock values for taxes and shipping, adjust as needed
   const taxRate = 0.08; // 8%
-  const shippingCost = cartTotal > 50 ? 0 : 5.00; // Free shipping over $50
+  const shippingCost = cartTotal > 500 ? 0 : 50.00; // Free shipping over ₹500, ₹50 shipping cost
   const taxes = cartTotal * taxRate;
   const finalTotal = cartTotal + taxes + shippingCost;
 
@@ -83,20 +84,20 @@ export default function CartPage() {
           <CardContent className="space-y-3">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Subtotal ({cartCount} items)</span>
-              <span>${cartTotal.toFixed(2)}</span>
+              <span>₹{cartTotal.toFixed(2)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Estimated Shipping</span>
-              <span>{shippingCost > 0 ? `$${shippingCost.toFixed(2)}` : 'Free'}</span>
+              <span>{shippingCost > 0 ? `₹${shippingCost.toFixed(2)}` : 'Free'}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Estimated Tax</span>
-              <span>${taxes.toFixed(2)}</span>
+              <span>₹{taxes.toFixed(2)}</span>
             </div>
             <Separator className="my-3" />
             <div className="flex justify-between font-bold text-xl">
               <span>Total</span>
-              <span>${finalTotal.toFixed(2)}</span>
+              <span>₹{finalTotal.toFixed(2)}</span>
             </div>
           </CardContent>
           <CardFooter>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import Image from 'next/image';
@@ -34,7 +35,7 @@ export function CartItemCard({ item }: CartItemCardProps) {
           <h3 className="text-lg font-semibold">{item.name}</h3>
         </Link>
         <p className="text-sm text-muted-foreground">{item.brand} - {item.category}</p>
-        <p className="text-md font-semibold text-primary mt-1">${item.price.toFixed(2)}</p>
+        <p className="text-md font-semibold text-primary mt-1">₹{item.price.toFixed(2)}</p>
         <div className="mt-2">
            <QuantitySelector
             quantity={item.quantity}
@@ -45,7 +46,7 @@ export function CartItemCard({ item }: CartItemCardProps) {
       </div>
       <div className="flex flex-col items-end justify-between h-full ml-auto">
          <p className="text-lg font-bold text-foreground">
-            ${(item.price * item.quantity).toFixed(2)}
+            ₹{(item.price * item.quantity).toFixed(2)}
           </p>
         <Button
           variant="ghost"

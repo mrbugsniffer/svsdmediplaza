@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { db, auth } from '@/lib/firebase'; // Import auth
+import { db, auth } from '@/lib/firebase'; 
 import { collection, onSnapshot, query, orderBy, DocumentData, Timestamp } from 'firebase/firestore';
 import type { Order } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,7 +14,7 @@ import Link from 'next/link';
 import { format } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 
-const ADMIN_EMAIL = 'admin@gmail.com'; // Define admin email constant
+const ADMIN_EMAIL = 'admin@gmail.com'; 
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -36,7 +36,7 @@ export default function AdminOrdersPage() {
         variant: "destructive",
         duration: 8000
       });
-      return; // Exit if not the authenticated admin
+      return; 
     }
 
     setIsLoading(true);
@@ -49,7 +49,6 @@ export default function AdminOrdersPage() {
         return {
           id: doc.id,
           ...data,
-          // Ensure Firestore Timestamps are converted to Date objects
           orderDate: data.orderDate?.toDate ? data.orderDate.toDate() : new Date(data.orderDate || Date.now()),
           createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt || Date.now()),
           updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : undefined,
@@ -146,7 +145,7 @@ export default function AdminOrdersPage() {
                       <TableCell>
                         {order.createdAt instanceof Date ? format(order.createdAt, "MMM d, yyyy") : 'N/A'}
                       </TableCell>
-                      <TableCell className="text-right">${order.totalAmount.toFixed(2)}</TableCell>
+                      <TableCell className="text-right">₹{order.totalAmount.toFixed(2)}</TableCell>
                       <TableCell className="text-center">
                         <Badge variant={getStatusBadgeVariant(order.status)} className="capitalize">
                           {order.status}
@@ -178,5 +177,3 @@ export default function AdminOrdersPage() {
     </div>
   );
 }
-
-    
