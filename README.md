@@ -12,6 +12,5 @@ This project provides a responsive and scalable frontend for browsing, searching
 
 - **Frontend:** Next.js, React, Tailwind CSS  
 - **State Management:** Context API / Redux Toolkit  
-- **Backend (Planned):** firebase  
-- **Auth:** NextAuth.js or JWT-based authentication  
+- **Backend (Planned):** firebase
 - **Deployment:** Vercel (frontend), firebase
